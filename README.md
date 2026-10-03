@@ -24,7 +24,7 @@ gradle build        # produces the JAR
 gradle spigotCheck  # compiles the same sources against the Spigot API
 ```
 
-The JAR lands in `build/libs/AngelSMP-1.0.0.jar`.
+The JAR lands in `build/libs/AngelSMP-1.1.0.jar`.
 
 A GitHub Actions workflow (`.github/workflows/build.yml`) builds the JAR on
 every push, **verifies Spigot API compatibility** and uploads the artifact.
@@ -60,7 +60,7 @@ How this is achieved:
 
 ## Installation
 
-1. Drop `AngelSMP-1.0.0.jar` into your server's `plugins/` folder.
+1. Drop `AngelSMP-1.1.0.jar` into your server's `plugins/` folder.
 2. Start the server once to generate `plugins/AngelSMP/config.yml`.
 3. Tune the config, then `/angel reload` (or restart).
 
