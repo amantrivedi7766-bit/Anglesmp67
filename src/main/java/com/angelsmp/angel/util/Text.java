@@ -8,7 +8,6 @@ public final class Text {
     private Text() {
     }
 
-    /** Translates legacy '&' codes and passes through '§' codes. */
     public static String color(String input) {
         if (input == null) {
             return "";

@@ -9,28 +9,27 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 /**
- * Phase 4 - the custom bound item that triggers the Active Ability on
- * right-click (an alternative to the F offhand-swap keybind).
+ * Phase 6 - the Soul Essence drop (a tagged Nether Star released at the death
+ * coordinates when a player's aura shatters).
  */
-public final class ElementalWand {
+public final class SoulEssence {
 
-    public static final String KEY_NAME = "elemental_focus";
+    public static final String KEY_NAME = "soul_essence";
 
-    private ElementalWand() {
+    private SoulEssence() {
     }
 
     public static NamespacedKey key(AngelPlugin plugin) {
         return new NamespacedKey(plugin, KEY_NAME);
     }
 
-    public static ItemStack create(AngelPlugin plugin) {
-        ItemStack item = ItemBuilder.of(Material.BLAZE_ROD)
-                .name("&eElemental Focus")
+    public static ItemStack create(AngelPlugin plugin, Material material) {
+        ItemStack item = ItemBuilder.of(material)
+                .name("&d&lSoul Essence")
                 .lore(
-                        "&7Right-click to unleash your Active Ability.",
-                        "&7Or press &fF &7(offhand swap).",
-                        "",
-                        "&8Angel SMP bound focus")
+                        "&7A shard of a shattered aura.",
+                        "&7Offered at an altar to reclaim",
+                        "&7what was lost.")
                 .glow()
                 .build();
         ItemMeta meta = item.getItemMeta();
@@ -41,8 +40,8 @@ public final class ElementalWand {
         return item;
     }
 
-    public static boolean isWand(AngelPlugin plugin, ItemStack item) {
-        if (item == null || item.getType() != Material.BLAZE_ROD) {
+    public static boolean isSoulEssence(AngelPlugin plugin, ItemStack item) {
+        if (item == null) {
             return false;
         }
         ItemMeta meta = item.getItemMeta();

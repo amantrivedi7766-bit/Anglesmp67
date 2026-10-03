@@ -1,0 +1,11 @@
+# AngelSMP chat layouts (Phase 7)
+death:
+  broadcast: "&c☠ %player% &7was slain, their aura has faded!"
+
+ability:
+  powers-disabled: "&c✦ Your powers are deactivated. Use /angel power to enable them."
+  combat-disabled: "&c✦ Combat mechanics are currently disabled server-wide."
+
+menu:
+  title-main: "&8[&bAngel SMP&8] &7Menu"
+  title-admin: "&4&lAdmin Power Matrix"

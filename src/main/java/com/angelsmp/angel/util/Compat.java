@@ -13,9 +13,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Cross-version / cross-platform compatibility layer (Paper, Spigot, Purpur,
- * Minecraft 1.21+). Every symbol that has been renamed or moved across versions
- * is resolved <b>by name at runtime</b> and degrades gracefully instead of
- * throwing {@code NoSuchFieldError} / {@code NoSuchMethodError}. No NMS.
+ * Minecraft 1.20.x - 1.21+). Renamed or moved symbols are resolved by name at
+ * runtime and degrade gracefully instead of throwing. No NMS.
  */
 public final class Compat {
 
@@ -24,8 +23,6 @@ public final class Compat {
 
     private static final Map<String, PotionEffectType> EFFECT_CACHE = new ConcurrentHashMap<>();
     private static final Map<String, Particle> PARTICLE_CACHE = new ConcurrentHashMap<>();
-
-    // ---- PotionEffectType ---------------------------------------------
 
     public static PotionEffectType effect(String... candidates) {
         String cacheKey = String.join("|", candidates);
@@ -43,7 +40,7 @@ public final class Compat {
                     break;
                 }
             } catch (Throwable ignored) {
-                // try next candidate
+                // try next
             }
         }
         if (found == null) {
@@ -61,8 +58,6 @@ public final class Compat {
         return found;
     }
 
-    // ---- Particle ------------------------------------------------------
-
     public static Particle particle(String key) {
         if (key == null) {
             return null;
@@ -79,7 +74,7 @@ public final class Compat {
         try {
             found = Particle.valueOf(clean.toUpperCase(Locale.ROOT));
         } catch (Throwable ignored) {
-            // fall through to registry lookup
+            // registry fallback
         }
         if (found == null) {
             Object value = registryLookup("PARTICLE", clean);
@@ -92,8 +87,6 @@ public final class Compat {
         }
         return found;
     }
-
-    // ---- Max health ----------------------------------------------------
 
     public static double maxHealth(LivingEntity entity) {
         try {
@@ -119,7 +112,7 @@ public final class Compat {
                         }
                     }
                 } catch (Throwable ignored) {
-                    // try next constant name
+                    // next constant
                 }
             }
         } catch (Throwable ignored) {
@@ -127,8 +120,6 @@ public final class Compat {
         }
         return 20.0;
     }
-
-    // ---- Action bar ----------------------------------------------------
 
     public static void sendActionBar(Player player, String legacyText) {
         try {
@@ -143,8 +134,7 @@ public final class Compat {
             Class<?> messageType = Class.forName("net.md_5.bungee.api.ChatMessageType");
             Object actionBar = messageType.getField("ACTION_BAR").get(null);
             Class<?> textComponent = Class.forName("net.md_5.bungee.api.chat.TextComponent");
-            Object components = textComponent.getMethod("fromLegacyText", String.class)
-                    .invoke(null, legacyText);
+            Object components = textComponent.getMethod("fromLegacyText", String.class).invoke(null, legacyText);
             Method send = spigot.getClass().getMethod("sendMessage", messageType, components.getClass());
             send.invoke(spigot, actionBar, components);
             return;
@@ -153,8 +143,6 @@ public final class Compat {
         }
         player.sendMessage(legacyText);
     }
-
-    // ---- Title ---------------------------------------------------------
 
     public static void sendTitle(Player player, String title, String subtitle,
                                  int fadeIn, int stay, int fadeOut) {
@@ -175,8 +163,6 @@ public final class Compat {
         }
         player.sendMessage(title + " " + subtitle);
     }
-
-    // ---- Registry helper ----------------------------------------------
 
     private static Object registryLookup(String registryField, String key) {
         try {

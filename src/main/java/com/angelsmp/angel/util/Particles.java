@@ -25,7 +25,7 @@ public final class Particles {
         try {
             world.spawnParticle(particle, loc, count, ox, oy, oz, speed);
         } catch (Throwable ignored) {
-            // particle data mismatch on this version - skip silently
+            // data mismatch on this version - skip
         }
     }
 
@@ -38,7 +38,7 @@ public final class Particles {
         try {
             world.spawnParticle(particle, loc, count, ox, oy, oz, 0.0, data);
         } catch (Throwable ignored) {
-            // particle does not accept block data on this version - skip silently
+            // skip
         }
     }
 
@@ -51,7 +51,7 @@ public final class Particles {
         try {
             world.spawnParticle(particle, loc, count, ox, oy, oz, 0.0, data);
         } catch (Throwable ignored) {
-            // particle does not accept item data on this version - skip silently
+            // skip
         }
     }
 }

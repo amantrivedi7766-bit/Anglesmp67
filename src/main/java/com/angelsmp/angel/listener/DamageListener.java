@@ -1,24 +1,18 @@
 package com.angelsmp.angel.listener;
 
 import com.angelsmp.angel.AngelPlugin;
-import com.angelsmp.angel.data.Element;
+import com.angelsmp.angel.data.Alignment;
 import com.angelsmp.angel.data.PlayerProfile;
-import com.angelsmp.angel.util.Particles;
-import com.angelsmp.angel.util.Sounds;
-import org.bukkit.Location;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.util.Vector;
 
 /**
- * Module 3 - Pyro Immunity (Fire passive), Aerodynamic Descent (Wind passive)
- * and the Blaze Fireball anti-grief explosion safeguard.
+ * Phase 2 &amp; 4 - stasis immunity and the element passives that are event-driven:
+ * Lightning immunity, Wind Safe Fall and Earth Knockback Resistance.
  */
 public class DamageListener implements Listener {
 
@@ -33,68 +27,41 @@ public class DamageListener implements Listener {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
-        PlayerProfile profile = plugin.getProfileManager().get(player.getUniqueId());
-        if (profile == null) {
-            return;
-        }
 
-        // Passive - Pyro Immunity (Level 0): a Fire Angel takes no fire damage.
-        if (profile.getElement() == Element.FIRE) {
-            switch (event.getCause()) {
-                case FIRE, FIRE_TICK, LAVA, HOT_FLOOR -> {
-                    event.setDamage(0.0);
-                    event.setCancelled(true);
-                    return;
-                }
-                default -> {
-                    // not a fire source
-                }
-            }
-        }
-
-        // Passive - Aerodynamic Descent (Level 2): cancel fall damage from a Wind Leap.
-        if (event.getCause() == EntityDamageEvent.DamageCause.FALL
-                && plugin.getPassiveManager().consumeFallExempt(player.getUniqueId())) {
+        // Phase 2 - the player cannot take damage while in Stasis.
+        if (plugin.getStasisManager().isInStasis(player.getUniqueId())) {
             event.setCancelled(true);
-        }
-    }
-
-    @EventHandler
-    public void onProjectileHit(ProjectileHitEvent event) {
-        Projectile projectile = event.getEntity();
-        if (!plugin.getAbilityManager().getProjectileTracker().isBlazeFireball(projectile.getUniqueId())) {
             return;
         }
-        plugin.getAbilityManager().getProjectileTracker().forget(projectile.getUniqueId());
 
-        Location impact;
-        if (event.getHitEntity() != null) {
-            impact = event.getHitEntity().getLocation();
-        } else if (event.getHitBlock() != null) {
-            impact = event.getHitBlock().getLocation().add(0.5, 0.5, 0.5);
-        } else {
-            impact = projectile.getLocation();
+        PlayerProfile profile = plugin.getProfileManager().get(player.getUniqueId());
+        if (profile == null || !profile.hasAlignment()) {
+            return;
         }
 
-        Entity shooter = projectile.getShooter() instanceof Entity entity ? entity : null;
+        // Lightning passive: immune to natural lightning and electric hazards.
+        if (profile.getAlignment() == Alignment.LIGHTNING
+                && event.getCause() == EntityDamageEvent.DamageCause.LIGHTNING) {
+            event.setCancelled(true);
+            return;
+        }
 
-        // Anti-grief: zero block-destruction radius, no ignition; only player damage.
-        for (Entity nearby : impact.getWorld().getNearbyEntities(impact, 4.0, 4.0, 4.0)) {
-            if (nearby instanceof Player victim && !nearby.equals(shooter)) {
-                if (shooter instanceof Player caster) {
-                    victim.damage(8.0, caster); // exactly 4 full hearts
-                } else {
-                    victim.damage(8.0);
+        // Wind passive (Tier II): Safe Fall up to 30 blocks.
+        if (profile.getAlignment() == Alignment.WIND && profile.getTier() >= 2
+                && event.getCause() == EntityDamageEvent.DamageCause.FALL
+                && player.getFallDistance() <= plugin.getConfigManager().windSafeFallBlocks()) {
+            event.setCancelled(true);
+            return;
+        }
+
+        // Earth passive (Tier II): Knockback Resistance - clamp the push next tick.
+        if (profile.getAlignment() == Alignment.EARTH && profile.getTier() >= 2) {
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (player.isValid()) {
+                    Vector velocity = player.getVelocity();
+                    player.setVelocity(new Vector(velocity.getX() * 0.2, velocity.getY(), velocity.getZ() * 0.2));
                 }
-                victim.setFireTicks(100); // 5 seconds
-            }
+            });
         }
-
-        Particles.spawn(impact.getWorld(), "large_smoke", impact, 30, 0.6, 0.1, 0.6, 0.15);
-        Particles.spawn(impact.getWorld(), "flame", impact, 25, 0.6, 0.1, 0.6, 0.12);
-        Sounds.playAt(impact, "entity.generic.explode", 1.0f, 1.0f);
-        Sounds.playAt(impact, "block.fire.ambient", 1.0f, 1.0f);
-
-        projectile.remove();
     }
 }

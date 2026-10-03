@@ -73,7 +73,6 @@ public final class ItemBuilder {
         return this;
     }
 
-    /** Applies the enchantment glint (modern glint-override, safely guarded). */
     public ItemBuilder glow() {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) {
@@ -82,19 +81,10 @@ public final class ItemBuilder {
         try {
             meta.setEnchantmentGlintOverride(Boolean.TRUE);
         } catch (Throwable ignored) {
-            // glint override unavailable on this API level - skip
+            // glint override unavailable - skip
         }
         meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         item.setItemMeta(meta);
-        return this;
-    }
-
-    public ItemBuilder flags(ItemFlag... flags) {
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.addItemFlags(flags);
-            item.setItemMeta(meta);
-        }
         return this;
     }
 

@@ -1,15 +1,12 @@
 package com.angelsmp.angel.listener;
 
 import com.angelsmp.angel.AngelPlugin;
-import com.angelsmp.angel.util.Text;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 
-/**
- * Module 3 (Earth) - The Seismic Pitfall Escape Block Blocker.
- * Prevents a trapped player from placing blocks beneath themselves.
- */
+/** Phase 2 - a player in Stasis cannot break or place blocks. */
 public class BlockListener implements Listener {
 
     private final AngelPlugin plugin;
@@ -19,10 +16,16 @@ public class BlockListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true)
-    public void onPlace(BlockPlaceEvent event) {
-        if (plugin.getPassiveManager().isPitTrapped(event.getPlayer().getUniqueId())) {
+    public void onBreak(BlockBreakEvent event) {
+        if (plugin.getStasisManager().isInStasis(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(Text.color("&cYou cannot build your way out of the pit!"));
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onPlace(BlockPlaceEvent event) {
+        if (plugin.getStasisManager().isInStasis(event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
         }
     }
 }

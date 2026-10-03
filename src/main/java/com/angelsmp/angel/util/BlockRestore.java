@@ -9,16 +9,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Temporarily swaps a set of blocks and restores their original types later. */
+/** Temporarily swaps blocks and restores their original types later. */
 public final class BlockRestore {
 
     private BlockRestore() {
     }
 
-    /**
-     * Caches the original material of every block, sets the replacement, then
-     * restores the originals after {@code restoreTicks}.
-     */
     public static void setTemporary(AngelPlugin plugin, List<Block> blocks, Material replacement, long restoreTicks) {
         Map<Location, Material> originals = new LinkedHashMap<>();
         for (Block block : blocks) {

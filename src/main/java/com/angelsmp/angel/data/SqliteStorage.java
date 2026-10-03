@@ -7,7 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.UUID;
 
-/** Local SQLite file storage (the default back-end). */
+/** Phase 1 - the local SQLite {@code database.db} store. */
 public class SqliteStorage implements Storage {
 
     private final File file;
@@ -20,20 +20,20 @@ public class SqliteStorage implements Storage {
     @Override
     public synchronized void init() throws Exception {
         if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
-            throw new IllegalStateException("Could not create data folder for " + file.getName());
+            throw new IllegalStateException("Could not create the AngelSMP data folder.");
         }
         Class.forName("org.sqlite.JDBC");
         connection = DriverManager.getConnection("jdbc:sqlite:" + file.getAbsolutePath());
         try (PreparedStatement statement = connection.prepareStatement(
                 "CREATE TABLE IF NOT EXISTS angel_profiles (" +
                         "uuid TEXT PRIMARY KEY, " +
-                        "race TEXT NOT NULL, " +
-                        "element TEXT NOT NULL, " +
-                        "level INTEGER NOT NULL, " +
+                        "alignment TEXT NOT NULL, " +
+                        "tier INTEGER NOT NULL, " +
                         "kills INTEGER NOT NULL, " +
                         "deaths INTEGER NOT NULL, " +
-                        "active_ts INTEGER NOT NULL, " +
-                        "ultimate_ts INTEGER NOT NULL)")) {
+                        "soul_locked_until INTEGER NOT NULL, " +
+                        "powers_disabled INTEGER NOT NULL, " +
+                        "last_ability_ts INTEGER NOT NULL)")) {
             statement.executeUpdate();
         }
     }
@@ -41,7 +41,7 @@ public class SqliteStorage implements Storage {
     @Override
     public synchronized PlayerProfile load(UUID uuid) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT race, element, level, kills, deaths, active_ts, ultimate_ts " +
+                "SELECT alignment, tier, kills, deaths, soul_locked_until, powers_disabled, last_ability_ts " +
                         "FROM angel_profiles WHERE uuid = ?")) {
             statement.setString(1, uuid.toString());
             try (ResultSet rs = statement.executeQuery()) {
@@ -49,48 +49,38 @@ public class SqliteStorage implements Storage {
                     return null;
                 }
                 return new PlayerProfile(uuid,
-                        Race.fromString(rs.getString("race")),
-                        Element.fromString(rs.getString("element")),
-                        rs.getInt("level"),
+                        Alignment.fromString(rs.getString("alignment")),
+                        rs.getInt("tier"),
                         rs.getInt("kills"),
                         rs.getInt("deaths"),
-                        rs.getLong("active_ts"),
-                        rs.getLong("ultimate_ts"));
+                        rs.getLong("soul_locked_until"),
+                        rs.getInt("powers_disabled") != 0,
+                        rs.getLong("last_ability_ts"));
             }
         }
     }
 
     @Override
     public synchronized void insertBaseline(PlayerProfile profile) throws Exception {
-        try (PreparedStatement statement = connection.prepareStatement(
-                "INSERT OR REPLACE INTO angel_profiles " +
-                        "(uuid, race, element, level, kills, deaths, active_ts, ultimate_ts) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
-            bind(statement, profile);
-            statement.executeUpdate();
-        }
+        save(profile);
     }
 
     @Override
     public synchronized void save(PlayerProfile profile) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO angel_profiles " +
-                        "(uuid, race, element, level, kills, deaths, active_ts, ultimate_ts) " +
+                        "(uuid, alignment, tier, kills, deaths, soul_locked_until, powers_disabled, last_ability_ts) " +
                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
-            bind(statement, profile);
+            statement.setString(1, profile.getUuid().toString());
+            statement.setString(2, profile.getAlignment().name());
+            statement.setInt(3, profile.getTier());
+            statement.setInt(4, profile.getKills());
+            statement.setInt(5, profile.getDeaths());
+            statement.setLong(6, profile.getSoulLockedUntil());
+            statement.setInt(7, profile.isPowersDisabled() ? 1 : 0);
+            statement.setLong(8, profile.getLastAbilityTimestamp());
             statement.executeUpdate();
         }
-    }
-
-    private void bind(PreparedStatement statement, PlayerProfile profile) throws Exception {
-        statement.setString(1, profile.getUuid().toString());
-        statement.setString(2, profile.getRace().name());
-        statement.setString(3, profile.getElement().name());
-        statement.setInt(4, profile.getLevel());
-        statement.setInt(5, profile.getKills());
-        statement.setInt(6, profile.getDeaths());
-        statement.setLong(7, profile.getActiveAbilityTimestamp());
-        statement.setLong(8, profile.getUltimateAbilityTimestamp());
     }
 
     @Override
@@ -99,7 +89,7 @@ public class SqliteStorage implements Storage {
             try {
                 connection.close();
             } catch (Exception ignored) {
-                // nothing we can do on shutdown
+                // shutdown
             }
             connection = null;
         }

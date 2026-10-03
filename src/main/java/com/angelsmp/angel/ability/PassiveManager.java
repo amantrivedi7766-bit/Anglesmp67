@@ -1,182 +1,72 @@
 package com.angelsmp.angel.ability;
 
 import com.angelsmp.angel.AngelPlugin;
-import com.angelsmp.angel.data.Element;
+import com.angelsmp.angel.data.Alignment;
 import com.angelsmp.angel.data.PlayerProfile;
 import com.angelsmp.angel.util.Compat;
-import com.angelsmp.angel.util.Particles;
-import com.angelsmp.angel.util.Sounds;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
- * Module 3 - the element passives that are event- or loop-driven:
- * Glacial Path, Aerodynamic Descent, Angelic Fury and Purifying Beacon.
+ * Phase 4 - the permanent Passive Buffs (unlocked at Tier II).
+ * Fire Resistance, Water Breathing, Night Vision are applied here; Lightning
+ * immunity, Safe Fall and Knockback Resistance are handled in the listeners.
  */
 public class PassiveManager {
 
     private final AngelPlugin plugin;
-
-    /** Module 3 (Wind) - the Aerodynamic Descent exempt list. */
-    private final Set<UUID> fallExempt = ConcurrentHashMap.newKeySet();
-    /** Module 3 (Earth) - players trapped by a Seismic Pitfall (cannot build out). */
-    private final Set<UUID> pitTrapped = ConcurrentHashMap.newKeySet();
-
-    private BukkitTask beaconTask;
+    private BukkitTask task;
 
     public PassiveManager(AngelPlugin plugin) {
         this.plugin = plugin;
     }
 
-    // ---- Loop task: Purifying Beacon + Glacial Path scanning -----------
-
     public void start() {
-        if (beaconTask != null) {
+        if (task != null) {
             return;
         }
-        // Purifying Beacon runs every 3 seconds (60 ticks).
-        beaconTask = plugin.getServer().getScheduler().runTaskTimer(plugin, this::purifyingBeaconTick, 60L, 60L);
+        task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 40L, 40L);
     }
 
     public void stop() {
-        if (beaconTask != null) {
-            beaconTask.cancel();
-            beaconTask = null;
+        if (task != null) {
+            task.cancel();
+            task = null;
         }
-        fallExempt.clear();
-        pitTrapped.clear();
     }
 
-    // ---- Aerodynamic Descent -------------------------------------------
+    private void tick() {
+        PotionEffectType fireResistance = Compat.effect("FIRE_RESISTANCE");
+        PotionEffectType waterBreathing = Compat.effect("WATER_BREATHING");
+        PotionEffectType nightVision = Compat.effect("NIGHT_VISION");
 
-    public void addFallExempt(UUID uuid) {
-        fallExempt.add(uuid);
-    }
-
-    /** @return true if the player was on the list (and is now removed). */
-    public boolean consumeFallExempt(UUID uuid) {
-        return fallExempt.remove(uuid);
-    }
-
-    // ---- Seismic Pitfall escape blocker --------------------------------
-
-    public void trapInPit(UUID uuid) {
-        pitTrapped.add(uuid);
-    }
-
-    public void releaseFromPit(UUID uuid) {
-        pitTrapped.remove(uuid);
-    }
-
-    public boolean isPitTrapped(UUID uuid) {
-        return pitTrapped.contains(uuid);
-    }
-
-    // ---- Angelic Fury --------------------------------------------------
-
-    /** Lightning passive: the caster gains Speed II + Strength I for 6s. */
-    public void triggerAngelicFury(Player caster) {
-        PotionEffectType speed = Compat.effect("SPEED");
-        PotionEffectType strength = Compat.effect("STRENGTH", "INCREASE_DAMAGE");
-        if (speed != null) {
-            caster.addPotionEffect(new PotionEffect(speed, 120, 1, false, true, true));
-        }
-        if (strength != null) {
-            caster.addPotionEffect(new PotionEffect(strength, 120, 0, false, true, true));
-        }
-        Sounds.playTo(caster, "entity.lightning_bolt.impact", 1.0f, 1.4f);
-
-        // Electric spark particles orbiting the player model for the buff window.
-        final int[] ticks = {0};
-        final BukkitTask[] holder = new BukkitTask[1];
-        holder[0] = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
-            if (!caster.isOnline() || ticks[0]++ > 120) {
-                holder[0].cancel();
-                return;
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            PlayerProfile profile = plugin.getProfileManager().get(player.getUniqueId());
+            if (profile == null || !profile.hasAlignment() || profile.getTier() < 2) {
+                continue; // passives unlock at Tier II
             }
-            Location base = caster.getLocation().add(0, 1, 0);
-            double angle = ticks[0] * 0.4;
-            for (int i = 0; i < 3; i++) {
-                double a = angle + (i * Math.PI * 2 / 3.0);
-                Location point = base.clone().add(Math.cos(a) * 0.8, 0.2 * Math.sin(angle), Math.sin(a) * 0.8);
-                Particles.spawn(point.getWorld(), "electric_spark", point, 1, 0.0, 0.0, 0.0, 0.0);
+            Alignment alignment = profile.getAlignment();
+            switch (alignment) {
+                case FIRE -> apply(player, fireResistance, 0);
+                case ICE -> apply(player, waterBreathing, 0);
+                case LIGHT -> apply(player, nightVision, 0);
+                default -> {
+                    // Wind / Earth / Lightning passives are event-driven.
+                }
             }
-        }, 0L, 1L);
+        }
     }
 
-    // ---- Glacial Path --------------------------------------------------
-
-    /** Called when a player crosses a block coordinate. */
-    public void onBlockChange(Player player, PlayerProfile profile) {
-        if (profile == null || profile.getElement() != Element.ICE || profile.getLevel() < 2) {
+    private void apply(Player player, PotionEffectType type, int amplifier) {
+        if (type == null) {
             return;
         }
-        Block standing = player.getLocation().subtract(0, 1, 0).getBlock();
-        if (standing.getType() != Material.WATER) {
-            return;
-        }
-        int baseX = standing.getX();
-        int baseY = standing.getY();
-        int baseZ = standing.getZ();
-        for (int x = -1; x <= 1; x++) {
-            for (int z = -1; z <= 1; z++) {
-                Block block = standing.getWorld().getBlockAt(baseX + x, baseY, baseZ + z);
-                if (block.getType() == Material.WATER) {
-                    // Frosted Ice naturally cracks and melts away over time.
-                    block.setType(Material.FROSTED_ICE, false);
-                }
-            }
-        }
-    }
-
-    // ---- Purifying Beacon ----------------------------------------------
-
-    private void purifyingBeaconTick() {
-        PotionEffectType regeneration = Compat.effect("REGENERATION");
-        PotionEffectType[] negatives = new PotionEffectType[]{
-                Compat.effect("POISON"),
-                Compat.effect("WITHER"),
-                Compat.effect("BLINDNESS"),
-                Compat.effect("SLOWNESS", "SLOW"),
-                Compat.effect("WEAKNESS"),
-                Compat.effect("HUNGER"),
-                Compat.effect("NAUSEA", "CONFUSION"),
-                Compat.effect("DARKNESS"),
-                Compat.effect("UNLUCK"),
-                Compat.effect("BAD_OMEN"),
-                Compat.effect("LEVITATION")
-        };
-
-        for (Player beacon : Bukkit.getOnlinePlayers()) {
-            PlayerProfile profile = plugin.getProfileManager().get(beacon.getUniqueId());
-            if (profile == null || profile.getElement() != Element.LIGHT || profile.getLevel() < 2) {
-                continue;
-            }
-            Location center = beacon.getLocation();
-            Particles.spawn(beacon.getWorld(), "happy_villager", center.clone().add(0, 1, 0), 4, 3.0, 0.5, 3.0, 0.05);
-            for (Player ally : beacon.getWorld().getPlayers()) {
-                if (ally.getLocation().distanceSquared(center) > 36.0) { // 6-block circle
-                    continue;
-                }
-                for (PotionEffectType negative : negatives) {
-                    if (negative != null) {
-                        ally.removePotionEffect(negative);
-                    }
-                }
-                if (regeneration != null) {
-                    ally.addPotionEffect(new PotionEffect(regeneration, 80, 0, false, true, true));
-                }
-            }
+        if (!player.hasPotionEffect(type)) {
+            // 100 ticks, refreshed every 40 ticks, ambient + no icon.
+            player.addPotionEffect(new PotionEffect(type, 100, amplifier, true, false, false));
         }
     }
 }

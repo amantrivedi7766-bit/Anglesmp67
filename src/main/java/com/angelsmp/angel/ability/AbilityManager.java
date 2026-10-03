@@ -1,104 +1,96 @@
 package com.angelsmp.angel.ability;
 
 import com.angelsmp.angel.AngelPlugin;
-import com.angelsmp.angel.ability.impl.BlazeFireball;
-import com.angelsmp.angel.ability.impl.DivineIntervention;
-import com.angelsmp.angel.ability.impl.EarthenFortify;
-import com.angelsmp.angel.ability.impl.FrostNova;
-import com.angelsmp.angel.ability.impl.HellfireDome;
-import com.angelsmp.angel.ability.impl.SeismicPitfall;
-import com.angelsmp.angel.ability.impl.StormCaller;
-import com.angelsmp.angel.ability.impl.WindLeap;
-import com.angelsmp.angel.cooldown.Cooldowns;
-import com.angelsmp.angel.data.Element;
+import com.angelsmp.angel.ability.impl.GigaShield;
+import com.angelsmp.angel.ability.impl.GlacialFreeze;
+import com.angelsmp.angel.ability.impl.HolyRestoration;
+import com.angelsmp.angel.ability.impl.InfernoBlast;
+import com.angelsmp.angel.ability.impl.ThunderBolt;
+import com.angelsmp.angel.ability.impl.ZephyrLeap;
+import com.angelsmp.angel.data.Alignment;
 import com.angelsmp.angel.data.PlayerProfile;
-import com.angelsmp.angel.util.Text;
 import org.bukkit.entity.Player;
 
 import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * Module 3 - Absolute Elemental Ability Matrix.
- *
- * <p>Gates every cast behind the strict verification steps: an assigned element,
- * the required active level, and an expired cooldown.</p>
+ * Phase 4 - the elemental ability registry and cast gating.
+ * Every cast verifies: an assigned alignment, an unlocked soul, enabled powers,
+ * the server-wide combat toggle and an expired cooldown.
  */
 public class AbilityManager {
 
     private final AngelPlugin plugin;
-    private final ProjectileTracker projectileTracker = new ProjectileTracker();
-    private final Map<Element, ElementalAbility> actives = new EnumMap<>(Element.class);
-    private final Map<Element, ElementalAbility> ultimates = new EnumMap<>(Element.class);
+    private final Map<Alignment, Ability> actives = new EnumMap<>(Alignment.class);
 
     public AbilityManager(AngelPlugin plugin) {
         this.plugin = plugin;
-        actives.put(Element.FIRE, new BlazeFireball());
-        actives.put(Element.ICE, new FrostNova());
-        actives.put(Element.LIGHTNING, new StormCaller());
-        actives.put(Element.WIND, new WindLeap());
-        actives.put(Element.EARTH, new EarthenFortify());
-        actives.put(Element.LIGHT, new DivineIntervention());
-
-        ultimates.put(Element.FIRE, new HellfireDome());
-        ultimates.put(Element.EARTH, new SeismicPitfall());
+        actives.put(Alignment.FIRE, new InfernoBlast());
+        actives.put(Alignment.ICE, new GlacialFreeze());
+        actives.put(Alignment.LIGHTNING, new ThunderBolt());
+        actives.put(Alignment.WIND, new ZephyrLeap());
+        actives.put(Alignment.EARTH, new GigaShield());
+        actives.put(Alignment.LIGHT, new HolyRestoration());
     }
 
-    public ProjectileTracker getProjectileTracker() {
-        return projectileTracker;
+    /** Phase 5 - Tier II: damage output +1 heart (2.0 HP). */
+    public double tierDamageBonus(int tier) {
+        return tier >= 2 ? 2.0 : 0.0;
     }
 
-    // ---- Level 1 (Active) ----------------------------------------------
+    /** Phase 5 - Tier II: cooldown reduced by 10%. */
+    public double cooldownSeconds(Alignment alignment, int tier) {
+        double base = switch (alignment) {
+            case FIRE -> plugin.getConfigManager().fireCooldown();
+            case ICE -> plugin.getConfigManager().iceCooldown();
+            case LIGHTNING -> plugin.getConfigManager().lightningCooldown();
+            case WIND -> plugin.getConfigManager().windCooldown();
+            case EARTH -> plugin.getConfigManager().earthCooldown();
+            case LIGHT -> plugin.getConfigManager().lightCooldown();
+            default -> 0;
+        };
+        return tier >= 2 ? base * 0.9 : base;
+    }
 
+    public double remainingCooldown(PlayerProfile profile) {
+        double total = cooldownSeconds(profile.getAlignment(), profile.getTier());
+        long elapsed = System.currentTimeMillis() - profile.getLastAbilityTimestamp();
+        return Math.max(0.0, total - elapsed / 1000.0);
+    }
+
+    public boolean isReady(PlayerProfile profile) {
+        return remainingCooldown(profile) <= 0.0;
+    }
+
+    /** @return true if the active ability fired. */
     public boolean useActive(Player player, PlayerProfile profile) {
-        if (!canUse(player, profile, 1)) {
+        if (profile == null || !profile.hasAlignment()) {
             return false;
         }
-        ElementalAbility ability = actives.get(profile.getElement());
+        if (profile.isPowersDisabled()) {
+            com.angelsmp.angel.util.Compat.sendActionBar(player, plugin.getMessages().get("ability.powers-disabled"));
+            return false;
+        }
+        if (profile.isSoulLocked()) {
+            plugin.getHudManager().showLockoutWarning(player, profile);
+            return false;
+        }
+        if (!plugin.isCombatEnabled()) {
+            player.sendMessage(plugin.getMessages().get("ability.combat-disabled"));
+            return false;
+        }
+        Ability ability = actives.get(profile.getAlignment());
         if (ability == null) {
-            player.sendMessage(Text.color("&c&l✦ Your element has no Level 1 ability."));
             return false;
         }
-        long now = System.currentTimeMillis();
-        if (now < profile.getActiveAbilityTimestamp() + Cooldowns.active(profile.getElement()) * 1000L) {
-            return false; // still cooling down (the action-bar tracker shows the timer)
+        double remaining = remainingCooldown(profile);
+        if (remaining > 0.0) {
+            return false; // the action-bar tracker shows the live countdown
         }
         ability.cast(plugin, player, profile);
-        profile.setActiveAbilityTimestamp(now);
+        profile.setLastAbilityTimestamp(System.currentTimeMillis());
         plugin.getProfileManager().saveAsync(profile);
-        return true;
-    }
-
-    // ---- Level 2 (Ultimate) --------------------------------------------
-
-    public boolean useUltimate(Player player, PlayerProfile profile) {
-        if (!canUse(player, profile, 2)) {
-            return false;
-        }
-        ElementalAbility ability = ultimates.get(profile.getElement());
-        if (ability == null) {
-            player.sendMessage(Text.color("&c&l✦ Your element has no Ultimate ability."));
-            return false;
-        }
-        long now = System.currentTimeMillis();
-        if (now < profile.getUltimateAbilityTimestamp() + Cooldowns.ultimate(profile.getElement()) * 1000L) {
-            return false;
-        }
-        ability.cast(plugin, player, profile);
-        profile.setUltimateAbilityTimestamp(now);
-        plugin.getProfileManager().saveAsync(profile);
-        return true;
-    }
-
-    /** Shared verification: assigned element + required level. */
-    private boolean canUse(Player player, PlayerProfile profile, int requiredLevel) {
-        if (profile == null || !profile.hasElement()) {
-            return false;
-        }
-        if (profile.getLevel() < requiredLevel) {
-            player.sendMessage(Text.color("&c&l✦ You need Level " + requiredLevel + " to use this ability."));
-            return false;
-        }
         return true;
     }
 }

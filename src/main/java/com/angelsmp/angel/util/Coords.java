@@ -5,18 +5,13 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 
-/** Module 2B - the anti-suffocation safety scan. */
+/** Safe-spot scanning used by the death/respawn and altar systems. */
 public final class Coords {
 
     private Coords() {
     }
 
-    /**
-     * Shifts the target location upward step-by-step (+1 Y) until a clear
-     * 2-block-high pocket of open air is found above a non-hazardous floor.
-     *
-     * @return a safe location (never inside solid blocks or lava).
-     */
+    /** Shifts the location upward until a clear 2-block-high pocket is found. */
     public static Location findSafeSpot(Location origin) {
         World world = origin.getWorld();
         if (world == null) {
@@ -26,15 +21,11 @@ public final class Coords {
         double z = origin.getZ();
         int y = Math.max(world.getMinHeight() + 1, origin.getBlockY());
         int maxY = world.getMaxHeight() - 3;
-
         while (y < maxY) {
             Block feet = world.getBlockAt((int) Math.floor(x), y, (int) Math.floor(z));
             Block head = world.getBlockAt((int) Math.floor(x), y + 1, (int) Math.floor(z));
             Block floor = world.getBlockAt((int) Math.floor(x), y - 1, (int) Math.floor(z));
-
-            if (!feet.getType().isSolid()
-                    && !head.getType().isSolid()
-                    && !isHazardous(floor.getType())) {
+            if (!feet.getType().isSolid() && !head.getType().isSolid() && !isHazardous(floor.getType())) {
                 Location safe = origin.clone();
                 safe.setY(y);
                 return safe;

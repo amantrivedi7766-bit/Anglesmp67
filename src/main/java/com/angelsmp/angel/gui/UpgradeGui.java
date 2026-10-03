@@ -1,7 +1,6 @@
 package com.angelsmp.angel.gui;
 
 import com.angelsmp.angel.AngelPlugin;
-import com.angelsmp.angel.config.PluginConfig;
 import com.angelsmp.angel.data.PlayerProfile;
 import com.angelsmp.angel.util.ItemBuilder;
 import com.angelsmp.angel.util.Text;
@@ -12,18 +11,16 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * Module 4B, Path B - The Sacrifice Upgrade GUI ({@code /upgrade}).
- * A 9-slot row whose Evolve Path button lists the dynamic material price.
+ * Phase 5 - The Upgrade GUI (a progression matrix).
+ * Tiers I / II / III, paid with Angel Tokens or raw XP levels.
  */
 public class UpgradeGui implements InventoryHolder {
 
     public static final String TITLE = "§d§lEvolve Path";
-
-    public static final int SLOT_EVOLVE = 4;
+    public static final int SLOT_TIER1 = 11;
+    public static final int SLOT_TIER2 = 13;
+    public static final int SLOT_TIER3 = 15;
 
     private final AngelPlugin plugin;
     private final Player player;
@@ -32,46 +29,57 @@ public class UpgradeGui implements InventoryHolder {
     public UpgradeGui(AngelPlugin plugin, Player player) {
         this.plugin = plugin;
         this.player = player;
-        this.inventory = Bukkit.createInventory(this, 9, Text.color(TITLE));
+        this.inventory = Bukkit.createInventory(this, 27, Text.color(TITLE));
         build();
     }
 
     private void build() {
-        PlayerProfile profile = plugin.getProfileManager().get(player.getUniqueId());
-        int level = profile == null ? 0 : profile.getLevel();
-        int next = Math.min(PlayerProfile.MAX_LEVEL, level + 1);
-        PluginConfig.Cost cost = plugin.getPluginConfig().costFor(next);
-
-        List<String> lore = new ArrayList<>();
-        lore.add("§7Current Level: §e" + level);
-        lore.add("§7Next Level: §e" + next);
-        lore.add("");
-        if (level >= PlayerProfile.MAX_LEVEL) {
-            lore.add("§aYou have reached the maximum level.");
-        } else if (cost != null) {
-            lore.add("§7Cost Required:");
-            lore.add("§c- " + cost.amount() + "x " + pretty(cost.material().name()));
-            lore.add("");
-            lore.add("§d▶ Click to sacrifice and evolve.");
-        } else {
-            lore.add("§cNo cost configured for this level.");
+        ItemStack pane = ItemBuilder.of(Material.GRAY_STAINED_GLASS_PANE).name(" ").build();
+        for (int i = 0; i < 27; i++) {
+            inventory.setItem(i, pane);
         }
 
-        inventory.setItem(SLOT_EVOLVE, ItemBuilder.of(Material.NETHERITE_BLOCK)
-                .name("§d§lEvolve Path")
-                .lore(lore)
-                .build());
+        PlayerProfile profile = plugin.getProfileManager().get(player.getUniqueId());
+        int tier = profile == null ? 1 : profile.getTier();
+        String currency = currencyText();
+
+        inventory.setItem(SLOT_TIER1, card(Material.EMERALD_BLOCK, "§a§lTIER I - BASE", tier >= 1,
+                "&7Standard damage, standard cooldown."));
+        inventory.setItem(SLOT_TIER2, card(Material.DIAMOND_BLOCK, "§b§lTIER II - ADVANCED", tier >= 2,
+                "&7+1 heart damage, -10% cooldown,",
+                "&7and the permanent passive buff."));
+        inventory.setItem(SLOT_TIER3, card(Material.NETHERITE_BLOCK, "§5§lTIER III - MASTERY", tier >= 3,
+                "&7Unlocks the secondary ultimate passive",
+                "&7(e.g. Fire melts Ice freeze fields)."));
+
+        // Cost reminder on the next upgrade.
+        int next = Math.min(3, tier + 1);
+        if (tier < 3) {
+            inventory.setItem(22, ItemBuilder.of(Material.EXPERIENCE_BOTTLE)
+                    .name("§e§lUPGRADE COST")
+                    .lore("§7Next: §fTier " + next, "§7Price: §e" + currency,
+                            "", "§a▶ Click the next tier block to evolve.")
+                    .build());
+        }
     }
 
-    private static String pretty(String materialName) {
-        String lower = materialName.replace('_', ' ').toLowerCase(java.util.Locale.ROOT);
-        StringBuilder builder = new StringBuilder();
-        for (String word : lower.split(" ")) {
-            if (!word.isEmpty()) {
-                builder.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1)).append(' ');
-            }
+    private ItemStack card(Material material, String name, boolean unlocked, String... lines) {
+        java.util.List<String> lore = new java.util.ArrayList<>();
+        java.util.Collections.addAll(lore, lines);
+        lore.add("");
+        lore.add(unlocked ? "&a✔ UNLOCKED" : "&c✘ LOCKED - click to unlock");
+        ItemBuilder builder = ItemBuilder.of(material).name(name).lore(lore);
+        if (unlocked) {
+            builder.glow();
         }
-        return builder.toString().trim();
+        return builder.build();
+    }
+
+    private String currencyText() {
+        if ("TOKENS".equalsIgnoreCase(plugin.getConfigManager().upgradeCurrency())) {
+            return plugin.getConfigManager().upgradeTokens() + "x Angel Tokens";
+        }
+        return plugin.getConfigManager().upgradeXpLevels() + " XP levels";
     }
 
     public Player getPlayer() {

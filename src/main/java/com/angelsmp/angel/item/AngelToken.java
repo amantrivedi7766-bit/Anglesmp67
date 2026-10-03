@@ -8,15 +8,12 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
-/**
- * Phase 4 - the custom bound item that triggers the Active Ability on
- * right-click (an alternative to the F offhand-swap keybind).
- */
-public final class ElementalWand {
+/** Phase 5 - the custom "Angel Token" upgrade currency. */
+public final class AngelToken {
 
-    public static final String KEY_NAME = "elemental_focus";
+    public static final String KEY_NAME = "angel_token";
 
-    private ElementalWand() {
+    private AngelToken() {
     }
 
     public static NamespacedKey key(AngelPlugin plugin) {
@@ -24,13 +21,12 @@ public final class ElementalWand {
     }
 
     public static ItemStack create(AngelPlugin plugin) {
-        ItemStack item = ItemBuilder.of(Material.BLAZE_ROD)
-                .name("&eElemental Focus")
+        ItemStack item = ItemBuilder.of(Material.GOLD_NUGGET)
+                .name("&6&lAngel Token")
                 .lore(
-                        "&7Right-click to unleash your Active Ability.",
-                        "&7Or press &fF &7(offhand swap).",
-                        "",
-                        "&8Angel SMP bound focus")
+                        "&7A token of favour, earned by",
+                        "&7completing server challenges.",
+                        "&7Spend it to evolve your element.")
                 .glow()
                 .build();
         ItemMeta meta = item.getItemMeta();
@@ -41,8 +37,8 @@ public final class ElementalWand {
         return item;
     }
 
-    public static boolean isWand(AngelPlugin plugin, ItemStack item) {
-        if (item == null || item.getType() != Material.BLAZE_ROD) {
+    public static boolean isToken(AngelPlugin plugin, ItemStack item) {
+        if (item == null || item.getType() != Material.GOLD_NUGGET) {
             return false;
         }
         ItemMeta meta = item.getItemMeta();

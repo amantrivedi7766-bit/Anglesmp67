@@ -1,13 +1,11 @@
 package com.angelsmp.angel.util;
 
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 /**
- * Sound helper built on namespaced sound keys (e.g. {@code entity.wither.spawn}).
- * Using keys rather than the {@code Sound} enum keeps every audio trigger working
- * across server versions and on Paper / Spigot / Purpur alike.
+ * Sound helper built on namespaced sound keys (e.g. {@code entity.blaze.shoot}),
+ * so every audio trigger works across versions and on Paper / Spigot / Purpur.
  */
 public final class Sounds {
 
@@ -28,13 +26,12 @@ public final class Sounds {
         player.playSound(player.getLocation(), key, volume, pitch);
     }
 
-    /** Plays a sound only for players inside a radius of the origin. */
+    /** Plays a sound to everyone within a radius of the origin. */
     public static void playNearby(Location origin, double radius, String key, float volume, float pitch) {
         if (origin == null || origin.getWorld() == null) {
             return;
         }
-        World world = origin.getWorld();
-        for (Player player : world.getPlayers()) {
+        for (Player player : origin.getWorld().getPlayers()) {
             if (player.getLocation().distanceSquared(origin) <= radius * radius) {
                 player.playSound(origin, key, volume, pitch);
             }

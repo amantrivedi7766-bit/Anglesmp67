@@ -3,23 +3,17 @@ version: '${version}'
 main: com.angelsmp.angel.AngelPlugin
 api-version: '1.21'
 authors: [Aman Kumar]
-description: Angel/Demon elemental SMP - async profiles, 6 element trees, death banishment, Rebirth Shard, GUIs, keybinds and a level-up animation engine.
+description: Angel/Devil elemental SMP - alignment selection, floating head-signs, 6 element ability trees, boss bar + action bar HUD, death lockout system, altars and an admin power matrix.
 website: https://github.com/amantrivedi7766-bit/Anglesmp67
+softdepend: [ProtocolLib, LuckPerms]
 
 commands:
-  sparkgui:
-    description: Open the Player Selection Screen.
-    usage: /sparkgui
-    aliases: [elements]
   angel:
-    description: Open the Player Selection Screen (/angel power).
-    usage: /angel power
+    description: Angel SMP main command.
+    usage: /angel <power|admin|upgrade|cast|token|reload>
     aliases: [angelsmp]
-  smp:
-    description: Open the Master Admin Overlord Menu.
-    usage: /smp menu
   upgrade:
-    description: Open the Sacrifice Upgrade GUI.
+    description: Open the Upgrade GUI.
     usage: /upgrade
 
 permissions:
@@ -27,5 +21,5 @@ permissions:
     description: Allows using the element menus and abilities.
     default: true
   angel.admin:
-    description: Allows access to the Admin Overlord Menu and Level Adjuster.
+    description: Allows access to the Admin Management GUI.
     default: op

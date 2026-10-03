@@ -3,83 +3,69 @@ package com.angelsmp.angel.data;
 import java.util.UUID;
 
 /**
- * Module 1 - The Live RAM Structure.
- *
- * <p>One profile per Minecraft UUID (never by name). Tracks exactly the seven
- * primitive fields required by the specification, in live memory.</p>
+ * Phase 1 - the live profile for a single player (keyed by UUID).
+ * Stores alignment, tier, kills, deaths, the soul-lockout timestamp and the
+ * power toggle state.
  */
 public class PlayerProfile {
 
-    public static final int MIN_LEVEL = 0;
-    public static final int MAX_LEVEL = 5;
+    public static final int MIN_TIER = 1;
+    public static final int MAX_TIER = 3;
 
     private final UUID uuid;
-
-    private Race race = Race.ANGEL;
-    private Element element = Element.NONE;
-    private int level = 0;
+    private Alignment alignment = Alignment.NONE;
+    private int tier = 1;
     private int kills = 0;
     private int deaths = 0;
-
-    /** Epoch millis of the last basic (Level 1) ability execution. */
-    private long activeAbilityTimestamp = 0L;
-    /** Epoch millis of the last ultimate (Level 2) ability execution. */
-    private long ultimateAbilityTimestamp = 0L;
+    /** Epoch millis until which the soul is locked (Phase 6). 0 = not locked. */
+    private long soulLockedUntil = 0L;
+    /** Phase 5 - the /angel power barrier toggle. */
+    private boolean powersDisabled = false;
+    /** Epoch millis of the last ability execution (cooldown state). */
+    private long lastAbilityTimestamp = 0L;
 
     public PlayerProfile(UUID uuid) {
         this.uuid = uuid;
     }
 
-    public PlayerProfile(UUID uuid, Race race, Element element, int level,
-                         int kills, int deaths, long activeAbilityTimestamp, long ultimateAbilityTimestamp) {
+    public PlayerProfile(UUID uuid, Alignment alignment, int tier, int kills, int deaths,
+                         long soulLockedUntil, boolean powersDisabled, long lastAbilityTimestamp) {
         this.uuid = uuid;
-        this.race = race;
-        this.element = element;
-        this.level = clampLevel(level);
+        this.alignment = alignment;
+        this.tier = clampTier(tier);
         this.kills = Math.max(0, kills);
         this.deaths = Math.max(0, deaths);
-        this.activeAbilityTimestamp = activeAbilityTimestamp;
-        this.ultimateAbilityTimestamp = ultimateAbilityTimestamp;
+        this.soulLockedUntil = soulLockedUntil;
+        this.powersDisabled = powersDisabled;
+        this.lastAbilityTimestamp = lastAbilityTimestamp;
     }
 
-    public static int clampLevel(int value) {
-        return Math.max(MIN_LEVEL, Math.min(MAX_LEVEL, value));
+    public static int clampTier(int value) {
+        return Math.max(MIN_TIER, Math.min(MAX_TIER, value));
     }
 
     public UUID getUuid() {
         return uuid;
     }
 
-    public Race getRace() {
-        return race;
+    public Alignment getAlignment() {
+        return alignment;
     }
 
-    public void setRace(Race race) {
-        this.race = race;
+    public void setAlignment(Alignment alignment) {
+        this.alignment = alignment;
     }
 
-    public boolean isAngel() {
-        return race == Race.ANGEL;
+    public boolean hasAlignment() {
+        return alignment != null && alignment != Alignment.NONE;
     }
 
-    public boolean isDemon() {
-        return race == Race.DEMON;
+    public int getTier() {
+        return tier;
     }
 
-    public Element getElement() {
-        return element;
-    }
-
-    public void setElement(Element element) {
-        this.element = element;
-    }
-
-    public int getLevel() {
-        return level;
-    }
-
-    public void setLevel(int level) {
-        this.level = clampLevel(level);
+    public void setTier(int tier) {
+        this.tier = clampTier(tier);
     }
 
     public int getKills() {
@@ -106,24 +92,38 @@ public class PlayerProfile {
         return ++this.deaths;
     }
 
-    public long getActiveAbilityTimestamp() {
-        return activeAbilityTimestamp;
+    public long getSoulLockedUntil() {
+        return soulLockedUntil;
     }
 
-    public void setActiveAbilityTimestamp(long value) {
-        this.activeAbilityTimestamp = value;
+    public void setSoulLockedUntil(long value) {
+        this.soulLockedUntil = value;
     }
 
-    public long getUltimateAbilityTimestamp() {
-        return ultimateAbilityTimestamp;
+    public boolean isSoulLocked() {
+        return soulLockedUntil > System.currentTimeMillis();
     }
 
-    public void setUltimateAbilityTimestamp(long value) {
-        this.ultimateAbilityTimestamp = value;
+    public boolean isPowersDisabled() {
+        return powersDisabled;
     }
 
-    /** Module 3 - abilities require an assigned element to fire. */
-    public boolean hasElement() {
-        return element != null && element != Element.NONE;
+    public void setPowersDisabled(boolean powersDisabled) {
+        this.powersDisabled = powersDisabled;
+    }
+
+    public long getLastAbilityTimestamp() {
+        return lastAbilityTimestamp;
+    }
+
+    public void setLastAbilityTimestamp(long value) {
+        this.lastAbilityTimestamp = value;
+    }
+
+    /** Wipes combat stats (admin sub-menu action). */
+    public void wipeStats() {
+        this.kills = 0;
+        this.deaths = 0;
+        this.tier = MIN_TIER;
     }
 }

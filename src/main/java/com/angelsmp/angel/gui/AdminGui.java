@@ -16,22 +16,21 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Module 5B - The Master Admin Overlord Menu ({@code /smp menu}).
- * 6 rows (54 slots) populated dynamically with online-player heads.
+ * Phase 5 - The Admin Management GUI ({@code /angel admin}).
+ * A 54-slot operator-only screen with an online-player head grid.
  */
-public class AdminMenuGui implements InventoryHolder {
-
-    public static final String TITLE = "§4§lSMP Admin Overlord";
+public class AdminGui implements InventoryHolder {
 
     private final AngelPlugin plugin;
     private final Player admin;
     private final Inventory inventory;
     private final Map<Integer, UUID> slotToPlayer = new HashMap<>();
 
-    public AdminMenuGui(AngelPlugin plugin, Player admin) {
+    public AdminGui(AngelPlugin plugin, Player admin) {
         this.plugin = plugin;
         this.admin = admin;
-        this.inventory = Bukkit.createInventory(this, 54, Text.color(TITLE));
+        this.inventory = Bukkit.createInventory(this, 54,
+                Text.color(plugin.getConfigManager().titleAdminMenu()));
         build();
     }
 
@@ -44,28 +43,31 @@ public class AdminMenuGui implements InventoryHolder {
                 break;
             }
             PlayerProfile profile = plugin.getProfileManager().get(target.getUniqueId());
-            String race = profile == null ? "ANGEL" : profile.getRace().name();
-            String element = profile == null ? "NONE" : profile.getElement().name();
-            int level = profile == null ? 0 : profile.getLevel();
+            String alignment = profile == null ? "NONE" : profile.getAlignment().name();
+            int tier = profile == null ? 1 : profile.getTier();
+            int kills = profile == null ? 0 : profile.getKills();
+            int deaths = profile == null ? 0 : profile.getDeaths();
 
-            inventory.setItem(slot, ItemBuilder.skull(target)
+            ItemStack head = ItemBuilder.skull(target)
                     .name("§e" + target.getName())
                     .lore(
                             "§7Target Name: §f" + target.getName(),
-                            "§7Race Type: §f[" + race + "]",
-                            "§7Current Element: §f" + element,
-                            "§7Current Level: §e" + level,
+                            "§7Alignment: §f" + alignment,
+                            "§7Current Level: §eTier " + tier + "/3",
+                            "§7Kills: §f" + kills + " §8| §7Deaths: §f" + deaths,
                             "",
-                            "§8Shift-Click: toggle Angel/Demon",
-                            "§8Right-Click: clear cooldowns",
-                            "§8Left-Click: open Level Adjuster")
-                    .build());
+                            "§a▶ Click to open the control sub-menu.")
+                    .build();
+            inventory.setItem(slot, head);
             slotToPlayer.put(slot, target.getUniqueId());
             slot++;
         }
+        if (slot == 0) {
+            inventory.setItem(22, ItemBuilder.of(org.bukkit.Material.GRAY_DYE)
+                    .name("§7No players online").build());
+        }
     }
 
-    /** Rebuilds the head population (used after a state change). */
     public void refresh() {
         inventory.clear();
         build();

@@ -8,13 +8,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
-/** Vector raycast helpers used by the Ice and Lightning abilities. */
+/** Vector raycast helpers. */
 public final class Raycast {
 
     private Raycast() {
     }
 
-    /** First living entity along the player's line of sight (excluding the caster). */
     public static LivingEntity targetEntity(Player player, double range, double raySize) {
         Location eye = player.getEyeLocation();
         Vector direction = eye.getDirection().normalize();
@@ -27,7 +26,6 @@ public final class Raycast {
         return hit instanceof LivingEntity living ? living : null;
     }
 
-    /** Point the player is looking at, preferring an entity hit, then a block, then max range. */
     public static Location targetPoint(Player player, double range) {
         Location eye = player.getEyeLocation();
         Vector direction = eye.getDirection().normalize();

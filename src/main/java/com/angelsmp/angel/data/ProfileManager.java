@@ -9,15 +9,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Module 1 - the asynchronous memory-buffered lifecycle.
- *
- * <pre>
- * [Player Connects] --&gt; Async DB Fetch --&gt; Cache Data to Profile Map
- * [Player Quits]    &lt;-- Async DB Save  &lt;-- Remove from Memory Cache
- * </pre>
- *
- * <p>Profiles are keyed strictly by UUID. The heavy DB work happens on a
- * dedicated background thread pool so the main thread never blocks.</p>
+ * Phase 1 - asynchronous, memory-buffered profile lifecycle.
+ * Keyed strictly by UUID; DB work runs on a background thread pool.
  */
 public class ProfileManager {
 
@@ -29,9 +22,7 @@ public class ProfileManager {
         return thread;
     });
 
-    /** Live RAM registry map (post-join). */
     private final Map<UUID, PlayerProfile> active = new ConcurrentHashMap<>();
-    /** Profiles pre-loaded during the login phase, not yet injected into the live map. */
     private final Map<UUID, PlayerProfile> pending = new ConcurrentHashMap<>();
 
     public ProfileManager(AngelPlugin plugin, Storage storage) {
@@ -39,39 +30,25 @@ public class ProfileManager {
         this.storage = storage;
     }
 
-    public Storage getStorage() {
-        return storage;
-    }
-
-    // ---- Login Pre-Check Phase (AsyncPlayerPreLoginEvent) --------------
-
-    /**
-     * Runs on the async pre-login thread: fetches the profile from the database
-     * (inserting a fresh baseline row if none exists) and stages it in memory.
-     */
+    /** Login Pre-Check Phase - runs on the async pre-login thread. */
     public void preLoad(UUID uuid) {
         try {
             PlayerProfile profile = storage.load(uuid);
             if (profile == null) {
-                profile = new PlayerProfile(uuid); // baseline: ANGEL / NONE / 0 / 0 / 0
+                profile = new PlayerProfile(uuid); // baseline: NONE / tier 1 / 0 / 0
                 storage.insertBaseline(profile);
-                plugin.getLogger().info("Inserted baseline profile for " + uuid);
             }
             pending.put(uuid, profile);
         } catch (Exception ex) {
             plugin.getLogger().severe("Failed to pre-load profile for " + uuid + ": " + ex.getMessage());
-            // Fail-safe: stage a baseline so the player is never left without a profile.
             pending.put(uuid, new PlayerProfile(uuid));
         }
     }
 
-    // ---- Join Map Injection Phase (PlayerJoinEvent) --------------------
-
-    /** Moves the pre-loaded profile into the live RAM registry. */
+    /** Join Map Injection Phase. */
     public PlayerProfile join(UUID uuid) {
         PlayerProfile profile = pending.remove(uuid);
         if (profile == null) {
-            // The pre-login phase was missed (reload, plugin hot-install, ...): load now.
             try {
                 profile = storage.load(uuid);
             } catch (Exception ex) {
@@ -86,9 +63,7 @@ public class ProfileManager {
         return profile;
     }
 
-    // ---- Safe Exit Phase (PlayerQuitEvent) -----------------------------
-
-    /** Copies the data out of live memory, drops the UUID, and saves asynchronously. */
+    /** Safe Exit Phase. */
     public void quit(UUID uuid) {
         PlayerProfile profile = active.remove(uuid);
         pending.remove(uuid);
@@ -97,21 +72,14 @@ public class ProfileManager {
         }
     }
 
-    // ---- Access --------------------------------------------------------
-
     public PlayerProfile get(UUID uuid) {
         PlayerProfile profile = active.get(uuid);
-        if (profile == null) {
-            profile = pending.get(uuid);
-        }
-        return profile;
+        return profile != null ? profile : pending.get(uuid);
     }
 
     public boolean isLoaded(UUID uuid) {
         return active.containsKey(uuid);
     }
-
-    // ---- Async persistence --------------------------------------------
 
     public void saveAsync(PlayerProfile profile) {
         dbPool.execute(() -> {
@@ -123,13 +91,13 @@ public class ProfileManager {
         });
     }
 
-    /** Flushes every live profile to disk (used on plugin disable). */
+    /** Periodic flush (config: server-settings.save-interval-minutes). */
     public void saveAll() {
         for (PlayerProfile profile : active.values()) {
             try {
                 storage.save(profile);
             } catch (Exception ex) {
-                plugin.getLogger().severe("Final save failed for " + profile.getUuid() + ": " + ex.getMessage());
+                plugin.getLogger().severe("Save failed for " + profile.getUuid() + ": " + ex.getMessage());
             }
         }
     }

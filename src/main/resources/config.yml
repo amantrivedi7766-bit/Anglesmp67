@@ -1,49 +1,58 @@
-# ============================================================
-#  AngelSMP - config.yml
-# ============================================================
+# AngelSMP Core Configuration File
+server-settings:
+  check-updates: true
+  save-interval-minutes: 5
 
-# ---- Module 1: Database --------------------------------------------
-database:
-  # "sqlite" (local file) or "mysql" (external data server).
-  type: sqlite
-  mysql:
-    host: 127.0.0.1
-    port: 3306
-    database: angelsmp
-    username: root
-    password: ""
+alignment-settings:
+  halo-particle-density: 15
+  halo-spin-speed: 1.2
+  enable-devil-horns: true
 
-# ---- Module 2B: Banishment spawn -----------------------------------
-# Where a Demon is sent on respawn (defaults to the Nether).
-spawn:
-  world: world_nether
-  x: 0.0
-  y: 80.0
-  z: 0.0
-  yaw: 0.0
-  pitch: 0.0
+ability-settings:
+  fire-angel:
+    base-damage: 8.0 # 4 Hearts
+    cooldown-seconds: 10
+    burn-duration-seconds: 6
+  ice-angel:
+    freeze-duration-seconds: 3
+    cooldown-seconds: 15
+    range-blocks: 12
+  lightning-angel:
+    base-damage: 6.0 # 3 Hearts
+    stun-duration-seconds: 2
+    cooldown-seconds: 12
+  wind-angel:
+    cooldown-seconds: 8
+    dash-blocks: 15.0
+    safe-fall-blocks: 30
+  earth-angel:
+    cooldown-seconds: 20
+    shield-duration-seconds: 6
+  light-angel:
+    cooldown-seconds: 18
+    heal-amount: 8.0 # 4 Hearts
 
-# ---- Module 2C: Purification ---------------------------------------
-purification:
-  # World spawn a purified Demon is returned to.
-  overworld: world
+death-system:
+  enable-shatter-particles: true
+  drop-soul-essence: true
+  soul-essence-item: "NETHER_STAR"
+  lockout-duration-minutes: 15
+  apply-weakness-on-respawn: true
+  weakness-duration-seconds: 30
 
-# ---- Module 4B Path B: Sacrifice upgrade costs ---------------------
-# Material price to reach each level from the one below it.
+# Phase 6 recovery rituals
+altar-recovery:
+  # The offering required at a Sacred Altar (1 Nether Star also works).
+  item-material: DIAMOND_BLOCK
+  item-amount: 3
+
+# Phase 5 upgrade economy
 upgrade:
-  costs:
-    1:
-      material: DIAMOND
-      amount: 64
-    2:
-      material: NETHERITE_SCRAP
-      amount: 32
-    3:
-      material: NETHERITE_INGOT
-      amount: 16
-    4:
-      material: NETHER_STAR
-      amount: 8
-    5:
-      material: NETHERITE_BLOCK
-      amount: 64
+  currency: XP_LEVELS # XP_LEVELS or TOKENS
+  xp-levels-per-tier: 50
+  tokens-per-tier: 10
+
+gui-settings:
+  title-main-menu: "&8[&bAngel SMP&8] &7Menu"
+  title-admin-menu: "&4&lAdmin Power Matrix"
+  fill-empty-slots-with-panes: true

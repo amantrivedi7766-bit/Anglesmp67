@@ -11,8 +11,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 
 /**
- * Module 6 - Ability Use &amp; Custom Keybind Execution.
- * Vanilla trigger hooks: F, Shift+F and the Elemental Wand.
+ * Phase 4 - ability triggers: the F offhand-swap keybind and the custom bound item.
  */
 public class AbilityTriggerListener implements Listener {
 
@@ -22,25 +21,19 @@ public class AbilityTriggerListener implements Listener {
         this.plugin = plugin;
     }
 
-    /** Keybind Methods 1 &amp; 2: the Offhand Swap Hook (F / Shift+F). */
+    /** Pressing F (offhand swap) fires the Active Ability. */
     @EventHandler
     public void onSwapHand(PlayerSwapHandItemsEvent event) {
         Player player = event.getPlayer();
         PlayerProfile profile = plugin.getProfileManager().get(player.getUniqueId());
-        if (profile == null || !profile.hasElement()) {
+        if (profile == null || !profile.hasAlignment()) {
             return;
         }
-        // Intercept so their weapon does not swap slots.
         event.setCancelled(true);
-
-        if (player.isSneaking()) {
-            plugin.getAbilityManager().useUltimate(player, profile);
-        } else {
-            plugin.getAbilityManager().useActive(player, profile);
-        }
+        plugin.getAbilityManager().useActive(player, profile);
     }
 
-    /** Keybind Method 3: The Interaction Wand (right-click / Shift + right-click). */
+    /** Right-clicking the bound focus item fires the Active Ability. */
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
@@ -50,16 +43,11 @@ public class AbilityTriggerListener implements Listener {
             return;
         }
         event.setCancelled(true);
-
         Player player = event.getPlayer();
         PlayerProfile profile = plugin.getProfileManager().get(player.getUniqueId());
-        if (profile == null || !profile.hasElement()) {
+        if (profile == null || !profile.hasAlignment()) {
             return;
         }
-        if (player.isSneaking()) {
-            plugin.getAbilityManager().useUltimate(player, profile);
-        } else {
-            plugin.getAbilityManager().useActive(player, profile);
-        }
+        plugin.getAbilityManager().useActive(player, profile);
     }
 }
