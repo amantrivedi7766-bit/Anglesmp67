@@ -1,0 +1,64 @@
+# ============================================================
+#  AngelSMP - config.yml
+#  Elemental Angel SMP plugin
+# ============================================================
+
+# ---- Cooldown HUD -------------------------------------------------
+hud:
+  # Push the live cooldown / ready counter to the action-bar (above hotbar).
+  action-bar: true
+  # Floating boss-bar overlay tracking the active element's cooldown.
+  boss-bar:
+    enabled: true
+    # Style used for the draining progress indicator.
+    # SEGMENTED_10 drains smoothly from 1.0 -> 0.0 with the remaining time.
+    style: SEGMENTED_10
+  # How often (in server ticks) the HUD refreshes. 20 ticks = 1 second.
+  refresh-ticks: 5
+
+# ---- Action-bar text templates -----------------------------------
+# %time%  -> whole seconds remaining (ceil)
+# %bars%  -> the ████ progress block, drains one block per second
+messages:
+  action-bar:
+    ready: "&a&l⚡ ANGEL POWER READY &7[Type /angel power]"
+    cooldown: "&c&l⏳ ANGEL POWER COOLDOWN: &e%time%s &7[&f%bars%&7]"
+
+# ---- Progression / Upgrade economy --------------------------------
+upgrade:
+  # Cost to move from Tier 1 -> Tier 2 (matches the Upgrade Window GUI lore).
+  tier-2:
+    diamond-blocks: 32
+    netherite-ingots: 5
+  # Cost to move from Tier 2 -> Tier 3.
+  tier-3:
+    diamond-blocks: 64
+    netherite-ingots: 16
+    nether-stars: 1
+
+# ---- Elemental tuning ---------------------------------------------
+# Per-element, per-tier numeric overrides. Remove an entry to use the
+# compiled-in defaults from the technical specification.
+elements:
+  fire:
+    enabled: true
+  ice:
+    enabled: true
+  lightning:
+    enabled: true
+  wind:
+    enabled: true
+  earth:
+    enabled: true
+  light:
+    enabled: true
+
+# ---- Player onboarding --------------------------------------------
+player:
+  # Assign a random element to a player the first time they join,
+  # so the plugin is immediately playable out of the box.
+  assign-random-on-first-join: true
+
+# ---- Data storage -------------------------------------------------
+# File used to persist each player's element + tier.
+data-file: players.yml

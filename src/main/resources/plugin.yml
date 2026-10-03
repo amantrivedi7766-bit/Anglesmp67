@@ -1,0 +1,21 @@
+name: AngelSMP
+version: '${version}'
+main: com.angelsmp.angel.AngelPlugin
+api-version: '1.21'
+authors: [Aman Kumar]
+description: Elemental Angel SMP plugin - 6 elements, 3 tiers each, GUIs, cooldown HUD, particles and sounds.
+website: https://github.com/amantrivedi7766-bit/Anglesmp67
+
+commands:
+  angel:
+    description: Angel SMP main command.
+    usage: /angel <power|menu|gui|admin|set|reload|help>
+    aliases: [angelsmp, ang, angels]
+
+permissions:
+  angel.use:
+    description: Allows using the base Angel commands and abilities.
+    default: true
+  angel.admin:
+    description: Allows access to the Operator Admin Dashboard and admin commands.
+    default: op

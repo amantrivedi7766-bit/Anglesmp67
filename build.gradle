@@ -1,0 +1,50 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.angelsmp'
+version = '1.0.0'
+description = 'AngelSMP - Elemental Angel SMP plugin with multi-tier progression, GUIs, particles and sounds.'
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'papermc'
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    def props = [version: project.version]
+    inputs.properties props
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}
+
+jar {
+    archiveBaseName = 'AngelSMP'
+    archiveVersion = project.version
+    // Include resources (plugin.yml / config.yml) - handled by processResources.
+    manifest {
+        attributes(
+                'Implementation-Title': 'AngelSMP',
+                'Implementation-Version': project.version
+        )
+    }
+}
+
+build.dependsOn jar
