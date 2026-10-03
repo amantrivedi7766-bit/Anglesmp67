@@ -6,48 +6,23 @@ import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
  * Thin wrapper over the Bukkit particle pipeline.
  *
- * <p>Particles are resolved from their {@code minecraft:} key at runtime so the
- * plugin keeps working across server versions even if a specific particle is
- * renamed or absent &mdash; a missing particle simply resolves to {@code null}
- * and is skipped rather than crashing the ability.</p>
+ * <p>Particles are resolved from their {@code minecraft:} key at runtime (see
+ * {@link Compat#particle(String)}) so the plugin keeps working across server
+ * versions even if a specific particle is renamed or absent &mdash; a missing
+ * particle simply resolves to {@code null} and is skipped rather than crashing
+ * the ability.</p>
  */
 public final class Particles {
-
-    private static final Map<String, Particle> CACHE = new ConcurrentHashMap<>();
 
     private Particles() {
     }
 
     /** Resolves a particle key such as {@code "flame"} or {@code "minecraft:flame"}. */
     public static Particle resolve(String key) {
-        if (key == null) {
-            return null;
-        }
-        String clean = key.toLowerCase(Locale.ROOT);
-        if (clean.startsWith("minecraft:")) {
-            clean = clean.substring("minecraft:".length());
-        }
-        Particle cached = CACHE.get(clean);
-        if (cached != null) {
-            return cached;
-        }
-        Particle particle;
-        try {
-            particle = Particle.valueOf(clean.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            particle = null;
-        }
-        if (particle != null) {
-            CACHE.put(clean, particle);
-        }
-        return particle;
+        return Compat.particle(key);
     }
 
     /** Spawns a simple (non-data) particle. */
@@ -57,7 +32,11 @@ public final class Particles {
         if (particle == null) {
             return;
         }
-        world.spawnParticle(particle, loc, count, ox, oy, oz, speed);
+        try {
+            world.spawnParticle(particle, loc, count, ox, oy, oz, speed);
+        } catch (Throwable ignored) {
+            // Particle data mismatch on this version - skip silently.
+        }
     }
 
     /** Spawns a block-data particle (e.g. {@code block_marker}, {@code block_crumble}). */
@@ -69,7 +48,7 @@ public final class Particles {
         }
         try {
             world.spawnParticle(particle, loc, count, ox, oy, oz, 0.0, data);
-        } catch (IllegalArgumentException ex) {
+        } catch (Throwable ignored) {
             // Particle does not accept block data on this version - skip silently.
         }
     }
@@ -83,7 +62,7 @@ public final class Particles {
         }
         try {
             world.spawnParticle(particle, loc, count, ox, oy, oz, 0.0, data);
-        } catch (IllegalArgumentException ex) {
+        } catch (Throwable ignored) {
             // Particle does not accept item data on this version - skip silently.
         }
     }

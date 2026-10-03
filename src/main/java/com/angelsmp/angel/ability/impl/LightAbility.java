@@ -5,10 +5,10 @@ import com.angelsmp.angel.ability.Ability;
 import com.angelsmp.angel.element.AngelElement;
 import com.angelsmp.angel.element.TierData;
 import com.angelsmp.angel.player.PlayerData;
+import com.angelsmp.angel.util.Compat;
 import com.angelsmp.angel.util.Particles;
 import com.angelsmp.angel.util.Sounds;
 import org.bukkit.Location;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
@@ -37,11 +37,20 @@ public class LightAbility implements Ability {
 
         // Instant health injection + lingering effects.
         heal(player, heal);
-        player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, duration, level - 1, false, true, true));
-        player.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, duration, 0, false, true, true));
+        PotionEffectType regeneration = Compat.effect("REGENERATION");
+        PotionEffectType glowing = Compat.effect("GLOWING");
+        if (regeneration != null) {
+            player.addPotionEffect(new PotionEffect(regeneration, duration, level - 1, false, true, true));
+        }
+        if (glowing != null) {
+            player.addPotionEffect(new PotionEffect(glowing, duration, 0, false, true, true));
+        }
 
         if (level >= 2) {
-            player.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, duration, 0, false, true, true));
+            PotionEffectType strength = Compat.effect("STRENGTH", "INCREASE_DAMAGE");
+            if (strength != null) {
+                player.addPotionEffect(new PotionEffect(strength, duration, 0, false, true, true));
+            }
         }
 
         if (level >= 3) {
@@ -50,7 +59,9 @@ public class LightAbility implements Ability {
                     HOLY_AURA_RADIUS, HOLY_AURA_RADIUS, HOLY_AURA_RADIUS)) {
                 if (entity instanceof Player ally && !entity.equals(player)) {
                     heal(ally, heal / 2.0);
-                    ally.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, duration, 0, false, true, true));
+                    if (regeneration != null) {
+                        ally.addPotionEffect(new PotionEffect(regeneration, duration, 0, false, true, true));
+                    }
                     Particles.spawn(ally.getWorld(), "totem_of_undying", ally.getLocation().add(0, 1, 0),
                             20, 0.4, 0.6, 0.4, 0.1);
                 }
@@ -66,8 +77,7 @@ public class LightAbility implements Ability {
     }
 
     private void heal(Player player, double amount) {
-        var attribute = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
-        double max = attribute == null ? 20.0 : attribute.getValue();
+        double max = Compat.maxHealth(player);
         player.setHealth(Math.min(max, player.getHealth() + amount));
     }
 

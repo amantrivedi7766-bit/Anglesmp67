@@ -26,6 +26,8 @@ public class ProjectileManager {
     private final AngelPlugin plugin;
     private final Map<UUID, AbilityProjectile> tracked = new ConcurrentHashMap<>();
     private BukkitTask task;
+    /** Own frame counter - avoids the Paper-only Server#getCurrentTick(). */
+    private long tick;
 
     public ProjectileManager(AngelPlugin plugin) {
         this.plugin = plugin;
@@ -47,7 +49,7 @@ public class ProjectileManager {
     }
 
     public void track(AbilityProjectile projectile) {
-        projectile.setSpawnTick(plugin.getServer().getCurrentTick());
+        projectile.setSpawnTick(tick);
         tracked.put(projectile.getProjectile().getUniqueId(), projectile);
     }
 
@@ -62,6 +64,7 @@ public class ProjectileManager {
     // ---- Flight animation ---------------------------------------------
 
     private void tick() {
+        tick++;
         for (AbilityProjectile data : tracked.values()) {
             Projectile projectile = data.getProjectile();
             if (projectile == null || projectile.isDead() || !projectile.isValid()) {
@@ -78,7 +81,7 @@ public class ProjectileManager {
             data.setLastLocation(current.clone());
 
             // Hard timeout so a stray projectile cannot linger forever.
-            if (plugin.getServer().getCurrentTick() - data.getSpawnTick() > 20L * 20L) {
+            if (tick - data.getSpawnTick() > 20L * 20L) {
                 projectile.remove();
                 tracked.remove(projectile.getUniqueId());
             }
@@ -92,7 +95,7 @@ public class ProjectileManager {
         Particles.spawn(loc.getWorld(), "lava", loc, lavaCount, 0.05, 0.05, 0.05, 0.0);
 
         // Spinning centre-axis animation: a small rotating ring of flame.
-        double angle = (plugin.getServer().getCurrentTick() * 0.5) % (Math.PI * 2);
+        double angle = (tick * 0.5) % (Math.PI * 2);
         for (int i = 0; i < 4; i++) {
             double a = angle + (i * Math.PI / 2.0);
             Location ring = loc.clone().add(Math.cos(a) * 0.3, Math.sin(a) * 0.3, Math.sin(a) * 0.3);

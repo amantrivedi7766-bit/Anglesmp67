@@ -5,6 +5,7 @@ import com.angelsmp.angel.ability.Ability;
 import com.angelsmp.angel.element.AngelElement;
 import com.angelsmp.angel.element.TierData;
 import com.angelsmp.angel.player.PlayerData;
+import com.angelsmp.angel.util.Compat;
 import com.angelsmp.angel.util.Particles;
 import com.angelsmp.angel.util.Raycast;
 import com.angelsmp.angel.util.Sounds;
@@ -67,10 +68,13 @@ public class IceAbility implements Ability {
             }
             if (level >= 2) {
                 // Frosty trail: leave Slowness I on nearby enemies.
-                for (Entity entity : impact.getWorld().getNearbyEntities(impact, 3.0, 3.0, 3.0)) {
-                    if (entity instanceof LivingEntity living && !entity.equals(player)) {
-                        living.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS,
-                                (int) stunTicks + 40, 0, false, true, true));
+                PotionEffectType slowness = Compat.effect("SLOWNESS", "SLOW");
+                if (slowness != null) {
+                    for (Entity entity : impact.getWorld().getNearbyEntities(impact, 3.0, 3.0, 3.0)) {
+                        if (entity instanceof LivingEntity living && !entity.equals(player)) {
+                            living.addPotionEffect(new PotionEffect(slowness,
+                                    (int) stunTicks + 40, 0, false, true, true));
+                        }
                     }
                 }
             }

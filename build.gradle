@@ -12,10 +12,28 @@ repositories {
         name = 'papermc'
         url = 'https://repo.papermc.io/repository/maven-public/'
     }
+    maven {
+        name = 'spigot'
+        url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
+    }
+}
+
+// The plugin is compiled against the LOWEST supported API (Paper 1.21.1) so the
+// resulting bytecode keeps working on every newer 1.21+ server. All version- or
+// platform-sensitive symbols are resolved at runtime (see util/Compat.java).
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT'
+}
+
+// A second, independent classpath used only to VERIFY that the exact same
+// sources also compile against the plain Spigot API (Paper, Spigot and Purpur).
+configurations {
+    spigotApi
 }
 
 dependencies {
-    compileOnly 'io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT'
+    spigotApi 'org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT'
+    spigotApi 'org.jetbrains:annotations:24.1.0'
 }
 
 java {
@@ -25,6 +43,7 @@ java {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    options.release = 21
 }
 
 processResources {
@@ -38,13 +57,23 @@ processResources {
 jar {
     archiveBaseName = 'AngelSMP'
     archiveVersion = project.version
-    // Include resources (plugin.yml / config.yml) - handled by processResources.
     manifest {
         attributes(
                 'Implementation-Title': 'AngelSMP',
                 'Implementation-Version': project.version
         )
     }
+}
+
+// Verifies the sources compile against the Spigot API (no Paper-only symbols).
+tasks.register('spigotCheck', JavaCompile) {
+    description = 'Compiles the plugin sources against the Spigot API to prove Spigot/Purpur compatibility.'
+    group = 'verification'
+    source = sourceSets.main.java
+    classpath = configurations.spigotApi
+    destinationDirectory = layout.buildDirectory.dir('spigot-check')
+    options.encoding = 'UTF-8'
+    options.release = 21
 }
 
 build.dependsOn jar

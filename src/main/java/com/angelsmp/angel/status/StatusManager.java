@@ -1,6 +1,7 @@
 package com.angelsmp.angel.status;
 
 import com.angelsmp.angel.AngelPlugin;
+import com.angelsmp.angel.util.Compat;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -64,8 +65,9 @@ public class StatusManager {
             Vector velocity = entity.getVelocity();
             entity.setVelocity(new Vector(0.0, Math.min(velocity.getY(), 0.0), 0.0));
             entity.setFallDistance(0f);
-            if (!entity.hasPotionEffect(PotionEffectType.SLOWNESS)) {
-                entity.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 10, 250, false, false, false));
+            PotionEffectType slowness = Compat.effect("SLOWNESS", "SLOW");
+            if (slowness != null && !entity.hasPotionEffect(slowness)) {
+                entity.addPotionEffect(new PotionEffect(slowness, 10, 250, false, false, false));
             }
             return false;
         });

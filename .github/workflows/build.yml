@@ -34,6 +34,9 @@ jobs:
       - name: Build with Gradle
         run: gradle build --no-daemon --stacktrace
 
+      - name: Verify Spigot API compatibility
+        run: gradle spigotCheck --no-daemon --stacktrace
+
       - name: Upload AngelSMP JAR
         uses: actions/upload-artifact@v4
         with:
@@ -48,4 +51,4 @@ jobs:
         run: |
           gh release create "${GITHUB_REF_NAME}" build/libs/*.jar \
             --title "AngelSMP ${GITHUB_REF_NAME}" \
-            --notes "Automated build of AngelSMP ${GITHUB_REF_NAME}."
+            --notes "Automated build of AngelSMP ${GITHUB_REF_NAME}. Paper, Spigot and Purpur compatible (1.21+)."

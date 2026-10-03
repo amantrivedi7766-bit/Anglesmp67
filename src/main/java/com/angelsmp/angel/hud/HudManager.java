@@ -4,9 +4,8 @@ import com.angelsmp.angel.AngelPlugin;
 import com.angelsmp.angel.element.AngelElement;
 import com.angelsmp.angel.element.TierData;
 import com.angelsmp.angel.player.PlayerData;
+import com.angelsmp.angel.util.Compat;
 import com.angelsmp.angel.util.Text;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -20,6 +19,10 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Drives both real-time cooldown interface vectors:
  * the action-bar live counter and the floating boss-bar overlay.
+ *
+ * <p>The action bar is dispatched through {@link Compat#sendActionBar} so it
+ * works on Paper, Spigot and Purpur alike without binding to an Adventure or
+ * Paper-only method.</p>
  */
 public class HudManager {
 
@@ -95,8 +98,7 @@ public class HudManager {
             template = template.replace("%time%", String.valueOf(remaining))
                     .replace("%bars%", Text.progressBar(remaining, Math.max(1, total), 12));
         }
-        Component component = LegacyComponentSerializer.legacySection().deserialize(Text.color(template));
-        player.sendActionBar(component);
+        Compat.sendActionBar(player, Text.color(template));
     }
 
     private void updateBossBar(Player player, AngelElement element, PlayerData data,
@@ -107,7 +109,6 @@ public class HudManager {
             return created;
         });
 
-        TierData tier = data.getCurrentTierData();
         String title = element.getColoredName() + " §8| §7Tier §e" + data.getTier() + "§7/3";
         if (cooling) {
             title += " §8| §c⏳ " + remaining + "s";

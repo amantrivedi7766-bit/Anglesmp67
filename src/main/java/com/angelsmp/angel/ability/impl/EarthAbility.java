@@ -5,6 +5,7 @@ import com.angelsmp.angel.ability.Ability;
 import com.angelsmp.angel.element.AngelElement;
 import com.angelsmp.angel.element.TierData;
 import com.angelsmp.angel.player.PlayerData;
+import com.angelsmp.angel.util.Compat;
 import com.angelsmp.angel.util.Particles;
 import com.angelsmp.angel.util.Sounds;
 import org.bukkit.Location;
@@ -36,8 +37,14 @@ public class EarthAbility implements Ability {
         int resistanceAmp = level == 1 ? 1 : 2;
         int absorptionAmp = level - 1; // I -> 4 HP, II -> 8 HP, III -> 12 HP
 
-        player.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE, duration, resistanceAmp, false, true, true));
-        player.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, duration, absorptionAmp, false, true, true));
+        PotionEffectType resistance = Compat.effect("RESISTANCE", "DAMAGE_RESISTANCE");
+        PotionEffectType absorption = Compat.effect("ABSORPTION");
+        if (resistance != null) {
+            player.addPotionEffect(new PotionEffect(resistance, duration, resistanceAmp, false, true, true));
+        }
+        if (absorption != null) {
+            player.addPotionEffect(new PotionEffect(absorption, duration, absorptionAmp, false, true, true));
+        }
 
         if (level >= 3) {
             // Unmovable Titan: immune to all incoming knockback forces.

@@ -14,16 +14,47 @@ specification.
 
 ## Build
 
-The plugin targets **Paper API 1.21.1** and **Java 21**.
+The plugin is compiled against the **lowest** supported API (Paper 1.21.1) so
+that the resulting bytecode keeps working on every newer 1.21+ server. All
+version- and platform-sensitive symbols are resolved at runtime (see
+`util/Compat.java`) - no NMS and no version-specific code anywhere.
 
 ```bash
-gradle build
+gradle build        # produces the JAR
+gradle spigotCheck  # compiles the same sources against the Spigot API
 ```
 
-The shaded-free JAR lands in `build/libs/AngelSMP-1.0.0.jar`.
+The JAR lands in `build/libs/AngelSMP-1.0.0.jar`.
 
 A GitHub Actions workflow (`.github/workflows/build.yml`) builds the JAR on
-every push and uploads it as a downloadable artifact.
+every push, **verifies Spigot API compatibility** and uploads the artifact.
+
+---
+
+## Compatibility
+
+| | Support |
+| --- | --- |
+| **Minecraft** | 1.21 and every subsequent stable release |
+| **Server software** | Paper, Spigot, Purpur |
+| **Java** | 21 |
+| **NMS / version-specific code** | None - Bukkit/Paper API only |
+
+How this is achieved:
+
+* Compiled against **Paper API 1.21.1** (the lowest supported version), so newer
+  servers load it unchanged.
+* A CI step (`gradle spigotCheck`) compiles the identical sources against the
+  plain **Spigot API** to prove no Paper-only symbol is used.
+* `util/Compat.java` resolves every symbol that has been renamed or moved across
+  versions **by name at runtime** (potion effects such as
+  `RESISTANCE`/`DAMAGE_RESISTANCE`, `MAX_HEALTH`/`GENERIC_MAX_HEALTH`, particles,
+  and the action-bar API), caching the result and degrading gracefully instead
+  of throwing `NoSuchFieldError` / `NoSuchMethodError`.
+* Particles are looked up by their `minecraft:` key with a registry fallback;
+  sounds are played by namespaced key - both survive renames.
+* No Adventure or Paper-only API is referenced at compile time, so the same JAR
+  runs on Spigot and Purpur too.
 
 ---
 
@@ -33,7 +64,7 @@ every push and uploads it as a downloadable artifact.
 2. Start the server once to generate `plugins/AngelSMP/config.yml`.
 3. Tune the config, then `/angel reload` (or restart).
 
-Supported on **Paper / Spigot 1.21.x** with **Java 21**.
+Supported on **Paper, Spigot and Purpur, Minecraft 1.21 and newer**, with **Java 21**.
 
 ---
 

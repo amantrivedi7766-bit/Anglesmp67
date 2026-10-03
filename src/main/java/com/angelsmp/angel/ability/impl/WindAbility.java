@@ -6,6 +6,7 @@ import com.angelsmp.angel.ability.ProjectileManager;
 import com.angelsmp.angel.element.AngelElement;
 import com.angelsmp.angel.element.TierData;
 import com.angelsmp.angel.player.PlayerData;
+import com.angelsmp.angel.util.Compat;
 import com.angelsmp.angel.util.Particles;
 import com.angelsmp.angel.util.Sounds;
 import org.bukkit.Location;
@@ -107,7 +108,10 @@ public class WindAbility implements Ability {
                 return;
             }
             if (player.isOnGround()) {
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 60, 1, false, true, true));
+                PotionEffectType speed = Compat.effect("SPEED");
+                if (speed != null) {
+                    player.addPotionEffect(new PotionEffect(speed, 60, 1, false, true, true));
+                }
                 Sounds.playTo(player, "entity.breeze.land", 1.0f, 1.0f);
                 holder[0].cancel();
             }
