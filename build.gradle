@@ -3,8 +3,8 @@ plugins {
 }
 
 group = 'com.angelsmp'
-version = '1.1.0'
-description = 'AngelSMP - Elemental Angel SMP plugin with multi-tier progression, GUIs, particles and sounds.'
+version = '2.0.0'
+description = 'AngelSMP - Angel/Demon elemental SMP plugin.'
 
 repositories {
     mavenCentral()
@@ -18,15 +18,16 @@ repositories {
     }
 }
 
-// The plugin is compiled against the LOWEST supported API (Paper 1.21.1) so the
-// resulting bytecode keeps working on every newer 1.21+ server. All version- or
-// platform-sensitive symbols are resolved at runtime (see util/Compat.java).
+// Compiled against the LOWEST supported API (Paper 1.21.1) so the bytecode keeps
+// working on every newer 1.21+ server. Version-sensitive symbols are resolved at
+// runtime (see util/Compat.java). The JDBC drivers are bundled into the fat JAR.
 dependencies {
     compileOnly 'io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT'
+    implementation 'org.xerial:sqlite-jdbc:3.46.1.0'
+    implementation 'com.mysql:mysql-connector-j:8.4.0'
 }
 
-// A second, independent classpath used only to VERIFY that the exact same
-// sources also compile against the plain Spigot API (Paper, Spigot and Purpur).
+// A second classpath used only to VERIFY the sources compile against Spigot too.
 configurations {
     spigotApi
 }
@@ -54,9 +55,16 @@ processResources {
     }
 }
 
+// Fat JAR: bundles the plugin classes plus the SQLite/MySQL JDBC drivers so the
+// plugin is self-contained (no external library install required).
 jar {
     archiveBaseName = 'AngelSMP'
     archiveVersion = project.version
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/MANIFEST.MF'
     manifest {
         attributes(
                 'Implementation-Title': 'AngelSMP',

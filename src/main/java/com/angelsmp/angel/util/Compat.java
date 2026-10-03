@@ -12,19 +12,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Cross-version / cross-platform compatibility layer.
- *
- * <p>AngelSMP targets Minecraft <b>1.21 through the latest stable release</b> on
- * <b>Paper, Spigot and Purpur</b>. Over that range a handful of Bukkit symbols
- * have been renamed, moved or added, and a few conveniences exist on Paper only.
- * Referencing those symbols directly at compile time produces
- * {@code NoSuchFieldError} / {@code NoSuchMethodError} at runtime on the wrong
- * platform or version.</p>
- *
- * <p>This class resolves every such symbol <b>by name at runtime</b>, caching the
- * result, and degrades gracefully (returns {@code null} / a safe default) when a
- * symbol is genuinely unavailable rather than crashing the ability. No NMS and
- * no version-specific code is used anywhere.</p>
+ * Cross-version / cross-platform compatibility layer (Paper, Spigot, Purpur,
+ * Minecraft 1.21+). Every symbol that has been renamed or moved across versions
+ * is resolved <b>by name at runtime</b> and degrades gracefully instead of
+ * throwing {@code NoSuchFieldError} / {@code NoSuchMethodError}. No NMS.
  */
 public final class Compat {
 
@@ -36,12 +27,6 @@ public final class Compat {
 
     // ---- PotionEffectType ---------------------------------------------
 
-    /**
-     * Resolves a potion effect by any of its historical names, e.g.
-     * {@code effect("RESISTANCE", "DAMAGE_RESISTANCE")}.
-     *
-     * @return the resolved type, or {@code null} if unavailable on this server.
-     */
     public static PotionEffectType effect(String... candidates) {
         String cacheKey = String.join("|", candidates);
         PotionEffectType cached = EFFECT_CACHE.get(cacheKey);
@@ -49,7 +34,6 @@ public final class Compat {
             return cached;
         }
         PotionEffectType found = null;
-        // 1) Static field lookup (fast, present on every supported version).
         for (String name : candidates) {
             try {
                 Field field = PotionEffectType.class.getField(name);
@@ -62,28 +46,12 @@ public final class Compat {
                 // try next candidate
             }
         }
-        // 2) Registry lookup by namespaced key (1.20.5+ data-driven registry).
         if (found == null) {
             for (String name : candidates) {
                 Object value = registryLookup("EFFECT", name.toLowerCase(Locale.ROOT));
                 if (value instanceof PotionEffectType type) {
                     found = type;
                     break;
-                }
-            }
-        }
-        // 3) Legacy PotionEffectType#getByName.
-        if (found == null) {
-            for (String name : candidates) {
-                try {
-                    Method method = PotionEffectType.class.getMethod("getByName", String.class);
-                    Object value = method.invoke(null, name);
-                    if (value instanceof PotionEffectType type) {
-                        found = type;
-                        break;
-                    }
-                } catch (Throwable ignored) {
-                    // try next candidate
                 }
             }
         }
@@ -95,10 +63,6 @@ public final class Compat {
 
     // ---- Particle ------------------------------------------------------
 
-    /**
-     * Resolves a particle from its {@code minecraft:} key, falling back to the
-     * data-driven registry so newly renamed particles keep working.
-     */
     public static Particle particle(String key) {
         if (key == null) {
             return null;
@@ -131,12 +95,7 @@ public final class Compat {
 
     // ---- Max health ----------------------------------------------------
 
-    /**
-     * Reads an entity's maximum health without binding to a specific
-     * {@code Attribute} constant (which was renamed in newer versions).
-     */
     public static double maxHealth(LivingEntity entity) {
-        // 1) Legacy LivingEntity#getMaxHealth (present on all supported versions).
         try {
             Method method = LivingEntity.class.getMethod("getMaxHealth");
             Object value = method.invoke(entity);
@@ -146,7 +105,6 @@ public final class Compat {
         } catch (Throwable ignored) {
             // fall through
         }
-        // 2) Attribute lookup, trying both the new and legacy constant names.
         try {
             Class<?> attributeClass = Class.forName("org.bukkit.attribute.Attribute");
             Method getAttribute = LivingEntity.class.getMethod("getAttribute", attributeClass);
@@ -172,13 +130,7 @@ public final class Compat {
 
     // ---- Action bar ----------------------------------------------------
 
-    /**
-     * Sends an action-bar message using whichever API the running server
-     * exposes (Paper's {@code sendActionBar}, Spigot's Bungee
-     * {@code ChatMessageType.ACTION_BAR}, or a chat fallback).
-     */
     public static void sendActionBar(Player player, String legacyText) {
-        // 1) Paper / modern: Player#sendActionBar(String).
         try {
             Method method = player.getClass().getMethod("sendActionBar", String.class);
             method.invoke(player, legacyText);
@@ -186,7 +138,6 @@ public final class Compat {
         } catch (Throwable ignored) {
             // fall through
         }
-        // 2) Spigot: player.spigot().sendMessage(ChatMessageType.ACTION_BAR, BaseComponent...).
         try {
             Object spigot = player.getClass().getMethod("spigot").invoke(player);
             Class<?> messageType = Class.forName("net.md_5.bungee.api.ChatMessageType");
@@ -200,8 +151,29 @@ public final class Compat {
         } catch (Throwable ignored) {
             // fall through
         }
-        // 3) Last resort: plain chat message.
         player.sendMessage(legacyText);
+    }
+
+    // ---- Title ---------------------------------------------------------
+
+    public static void sendTitle(Player player, String title, String subtitle,
+                                 int fadeIn, int stay, int fadeOut) {
+        try {
+            Method method = player.getClass().getMethod("sendTitle", String.class, String.class,
+                    int.class, int.class, int.class);
+            method.invoke(player, title, subtitle, fadeIn, stay, fadeOut);
+            return;
+        } catch (Throwable ignored) {
+            // fall through
+        }
+        try {
+            Method method = player.getClass().getMethod("sendTitle", String.class, String.class);
+            method.invoke(player, title, subtitle);
+            return;
+        } catch (Throwable ignored) {
+            // fall through
+        }
+        player.sendMessage(title + " " + subtitle);
     }
 
     // ---- Registry helper ----------------------------------------------

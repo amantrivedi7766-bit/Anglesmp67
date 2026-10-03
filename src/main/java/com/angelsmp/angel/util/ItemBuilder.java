@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/** Fluent builder for GUI icons, including the enchantment-glow wrapper and player skulls. */
+/** Fluent builder for GUI icons, player skulls and the glow wrapper. */
 public final class ItemBuilder {
 
     private final ItemStack item;
@@ -35,6 +35,10 @@ public final class ItemBuilder {
             skullMeta.setOwningPlayer(owner);
         }
         stack.setItemMeta(meta);
+        return new ItemBuilder(stack);
+    }
+
+    public static ItemBuilder wrap(ItemStack stack) {
         return new ItemBuilder(stack);
     }
 
@@ -69,12 +73,7 @@ public final class ItemBuilder {
         return this;
     }
 
-    /**
-     * Applies the active enchantment glow wrapper via the modern glint
-     * override plus {@link ItemFlag#HIDE_ENCHANTS}. If the running server
-     * does not support the glint override, the item is left un-glinted
-     * rather than risking an unsafe enchantment reference.
-     */
+    /** Applies the enchantment glint (modern glint-override, safely guarded). */
     public ItemBuilder glow() {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) {
@@ -83,7 +82,7 @@ public final class ItemBuilder {
         try {
             meta.setEnchantmentGlintOverride(Boolean.TRUE);
         } catch (Throwable ignored) {
-            // Glint override unavailable on this API level - skip the glow.
+            // glint override unavailable on this API level - skip
         }
         meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         item.setItemMeta(meta);

@@ -1,70 +1,84 @@
 # AngelSMP
 
-**AngelSMP** is a Paper/Spigot elemental-abilities plugin. Every player is
-assigned one of **six elemental archetypes**, each with a **three-tier**
-progression path, cooldown HUD, and three native chest GUIs. Abilities fire
-real-time particle and sound animations exactly as laid out in the technical
-specification.
+An **Angel / Demon elemental SMP** plugin for **Paper, Spigot and Purpur**
+(Minecraft **1.21+**). It implements all seven modules of the specification:
+an asynchronous database lifecycle, a cross-dimensional death & banishment loop,
+six elemental ability trees, timing/progression frameworks, three GUI menus,
+vanilla keybind ability triggers and a full level-up animation engine.
 
 > Download the compiled `AngelSMP-<version>.jar` from the **Actions → Build
-> AngelSMP → Artifacts** panel of this repository (or from the **Releases**
-> page when a version tag is pushed).
+> AngelSMP → Artifacts** panel (or the **Releases** page on a version tag).
 
 ---
 
 ## Build
 
-The plugin is compiled against the **lowest** supported API (Paper 1.21.1) so
-that the resulting bytecode keeps working on every newer 1.21+ server. All
-version- and platform-sensitive symbols are resolved at runtime (see
-`util/Compat.java`) - no NMS and no version-specific code anywhere.
+Compiled against the **lowest** supported API (Paper 1.21.1) so the bytecode
+runs on every newer 1.21+ server. Version-sensitive symbols are resolved at
+runtime (`util/Compat.java`); no NMS, no version-specific code.
 
 ```bash
-gradle build        # produces the JAR
+gradle build        # fat JAR (bundles the SQLite + MySQL JDBC drivers)
 gradle spigotCheck  # compiles the same sources against the Spigot API
 ```
 
-The JAR lands in `build/libs/AngelSMP-1.1.0.jar`.
-
-A GitHub Actions workflow (`.github/workflows/build.yml`) builds the JAR on
-every push, **verifies Spigot API compatibility** and uploads the artifact.
+Output: `build/libs/AngelSMP-2.0.0.jar`.
 
 ---
 
-## Compatibility
+## Modules
 
-| | Support |
-| --- | --- |
-| **Minecraft** | 1.21 and every subsequent stable release |
-| **Server software** | Paper, Spigot, Purpur |
-| **Java** | 21 |
-| **NMS / version-specific code** | None - Bukkit/Paper API only |
+### Module 1 - Data Architecture & Memory Management
+Profiles are keyed strictly by **UUID** and track seven primitives:
+`race` (ANGEL/DEMON), `element` (FIRE/ICE/LIGHTNING/WIND/EARTH/LIGHT/NONE),
+`level` (0–5), `kills`, `deaths`, `activeAbilityTimestamp`, `ultimateAbilityTimestamp`.
+The lifecycle is async-buffered: `AsyncPlayerPreLoginEvent` fetches (and inserts
+a baseline row if missing), `PlayerJoinEvent` injects into the live RAM map, and
+`PlayerQuitEvent` copies out and saves on a background thread. Back-end is
+**SQLite** (default, bundled) or **MySQL** (`database.type` in config).
 
-How this is achieved:
+### Module 2 - Death Loop & Banishment
+On death an Angel is demoted to a **Demon** (race = DEMON, element = NONE), loses
+one level via `max(0, level - 1)`, the killer's kill counter is audited, a
+`ENTITY_WITHER_SPAWN` packet (pitch 0.4) plays dimension-wide and a global
+announcement broadcasts. `PlayerRespawnEvent` (HIGHEST) ignores beds/anchors and
+forces Demons to the configured Nether spawn after an anti-suffocation scan, then
+applies Blindness (4s) + Darkness (6s). The **Rebirth Shard** (a Nether Star with
+a hidden namespaced tag, crafted from 4 Diamond Blocks + 4 Netherite Ingots + 1
+Nether Star) purifies a Demon back to the Overworld with a 3-second spiral ritual.
 
-* Compiled against **Paper API 1.21.1** (the lowest supported version), so newer
-  servers load it unchanged.
-* A CI step (`gradle spigotCheck`) compiles the identical sources against the
-  plain **Spigot API** to prove no Paper-only symbol is used.
-* `util/Compat.java` resolves every symbol that has been renamed or moved across
-  versions **by name at runtime** (potion effects such as
-  `RESISTANCE`/`DAMAGE_RESISTANCE`, `MAX_HEALTH`/`GENERIC_MAX_HEALTH`, particles,
-  and the action-bar API), caching the result and degrading gracefully instead
-  of throwing `NoSuchFieldError` / `NoSuchMethodError`.
-* Particles are looked up by their `minecraft:` key with a registry fallback;
-  sounds are played by namespaced key - both survive renames.
-* No Adventure or Paper-only API is referenced at compile time, so the same JAR
-  runs on Spigot and Purpur too.
+### Module 3 - Absolute Elemental Ability Matrix
 
----
+| Element | Level 1 (Active) | Level 2 |
+| --- | --- | --- |
+| 🔥 Fire | Blaze Fireball (10s) | Hellfire Dome (30s) |
+| ❄️ Ice | Frost Nova (15s) | Glacial Path (passive) |
+| ⚡ Lightning | Storm Caller (12s) | Angelic Fury (passive) |
+| 💨 Wind | Wind Leap (8s) | Aerodynamic Descent (passive) |
+| ⛰️ Earth | Earthen Fortify (20s) | Seismic Pitfall (25s) |
+| ☀️ Light | Divine Intervention (18s) | Purifying Beacon (passive) |
 
-## Installation
+Plus Fire's Level 0 passive **Pyro Immunity**. Every cast is gated behind the
+assigned element, the required level and an expired cooldown.
 
-1. Drop `AngelSMP-1.1.0.jar` into your server's `plugins/` folder.
-2. Start the server once to generate `plugins/AngelSMP/config.yml`.
-3. Tune the config, then `/angel reload` (or restart).
+### Module 4 - Timing & Progression
+A single master task (every 2 ticks) renders the action-bar cooldown bar
+(`§cAbility Cooldown: 4.5s [§a████§c██████§7]`) and fires a `● ABILITY READY ●`
+alert + chime the moment a timer expires. Two upgrade paths: **combat kills**
+(5 / 15 / 30 → levels 1 / 2 / 3) and the **`/upgrade` Sacrifice GUI**.
 
-Supported on **Paper, Spigot and Purpur, Minecraft 1.21 and newer**, with **Java 21**.
+### Module 5 - Interfaces
+`/sparkgui` (or `/angel power`) opens the 27-slot Element Selection Screen;
+`/smp menu` opens the 54-slot Admin Overlord Menu (dynamic player heads, live
+lore, Shift/Right/Left click matrix) with the 9-slot Level Adjuster Sub-GUI.
+
+### Module 6 - Keybinds
+`F` → Level 1 ability; `Shift + F` → Level 2 ultimate; the tagged **Elemental
+Wand** (Blaze Rod) right-click / Shift + right-click does the same.
+
+### Module 7 - Level-Up Animation
+20-tick movement freeze, three layered sound bursts to nearby players, the
+double-helix `sin/cos` particle swirl, and the `★ LEVEL UP ★` title card.
 
 ---
 
@@ -72,103 +86,15 @@ Supported on **Paper, Spigot and Purpur, Minecraft 1.21 and newer**, with **Java
 
 | Command | Permission | Description |
 | --- | --- | --- |
-| `/angel power` | `angel.use` | Activate your elemental ability. |
-| `/angel menu` (`/angel gui`) | `angel.use` | Open the Player Menu GUI. |
-| `/angel admin` | `angel.admin` | Open the Operator Admin Dashboard. |
-| `/angel set <player> <element>` | `angel.admin` | Override a player's element. |
-| `/angel reload` | `angel.admin` | Reload `config.yml` on the fly. |
-| `/angel help` | - | List commands. |
-
-Aliases: `/angelsmp`, `/ang`, `/angels`.
+| `/sparkgui`, `/angel power` | `angel.use` | Element Selection Screen |
+| `/smp menu` | `angel.admin` | Admin Overlord Menu |
+| `/upgrade` | `angel.use` | Sacrifice Upgrade GUI |
 
 ---
 
-## The six archetypes
+## Compatibility
 
-| Element | Active ability | Base cooldown |
-| --- | --- | --- |
-| 🔥 Fire (Pyromancer) | Directional fireball → non-destructive explosion + burn DoT | 10s |
-| ❄️ Ice (Cryomancer) | Eye raycast → stun/freeze + water → frosted_ice | 15s |
-| ⚡ Lightning (Stormbringer) | Raycast → LightningBolt strike + hard stun | 12s |
-| 🌀 Wind (Zephyr) | Forward leap (1.8×) + AoE knockback | 8s |
-| ⛰️ Earth (Titan) | Resistance + Absorption buff shell | 20s |
-| ☀️ Light (Seraph) | Instant heal + Regeneration + Glowing | 18s |
-
-Each element scales through **Tier 1 → Tier 2 → Tier 3** with the exact
-cooldowns, damage/healing, durations and milestone unlocks from the metrics
-table (see `AngelElement.java`).
-
-### Tier milestones
-
-* **Fire** — small fireball → explosive ghast fireball → triple spread cone.
-* **Ice** — single freeze → frosty trail → Glacial Tomb (5-block freeze).
-* **Lightning** — 10-block ray → 18-block ray → Storm Call (3 strikes).
-* **Wind** — basic leap → Speed II on landing → Sonic Boom (no fall damage).
-* **Earth** — Res II/Abs I → Res III/Abs II → Unmovable Titan (knockback immune).
-* **Light** — heal 8 → heal 12 + Strength → Holy Aura (heal allies, 6-block).
-
----
-
-## GUIs
-
-### 👥 Player Menu (`/angel menu`) — 9×3
-Gray-pane frame with your skull profile (slot 10), the **Evolutionary Upgrade**
-trigger (slot 13) and the **Stats & Codex Ledger** (slot 16).
-
-### 👑 Upgrade Window — 9×5
-Golden-pane pipeline with a diagonal tier path:
-`Tier 1 (10) → » (11) → Tier 2 (21) → » (22) → Tier 3 (32)`, plus the
-**Return** barrier (slot 39). Locked tiers show redstone, unlockable tiers
-show a **flashing gold ingot** with the exact cost lore, unlocked tiers show a
-glowing emerald block.
-
-### 🛡️ Operator Admin Dashboard (`/angel admin`) — 9×6
-Black-pane matrix with six element injectors (slots 10–15), a live feed of
-online-player skulls (slots 28–34, 37–43) and the **RELOAD MASTER CACHE** TNT
-(slot 48). Click an injector to lock a cursor brush, then click a player skull
-to override that player's element via the console backend.
-
----
-
-## Cooldown HUD
-
-* **Action bar** — `⚡ ANGEL POWER READY` / `⏳ ANGEL POWER COOLDOWN: %time%s`,
-  with the █ progress bar draining one block per second.
-* **Boss bar** — per-element colour, `SEGMENTED_10` style, progress draining
-  smoothly from 1.0 → 0.0.
-
-Both are toggled in `config.yml`.
-
----
-
-## Configuration
-
-`config.yml` controls the HUD toggles, action-bar templates, upgrade costs and
-first-join element assignment. Player element + tier are persisted in
-`plugins/AngelSMP/players.yml`.
-
----
-
-## Project layout
-
-```
-src/main/java/com/angelsmp/angel/
-├── AngelPlugin.java          Core engine / wiring
-├── element/                  AngelElement, TierData
-├── player/                   PlayerData, PlayerManager
-├── ability/                  Ability, AbilityManager, ProjectileManager, impl/*
-├── status/                   StatusManager (stun, knockback/fall immunity)
-├── cooldown/                 CooldownManager
-├── tier/                     UpgradeService
-├── hud/                      HudManager (action bar + boss bar)
-├── gui/                      MenuGui, UpgradeGui, AdminGui, CodexGui
-├── listener/                 GuiListener, CombatListener, ConnectionListener
-├── command/                  AngelCommand
-└── util/                     Text, Particles, Sounds, ItemBuilder, Raycast
-```
-
----
-
-## License
-
-See [LICENSE](LICENSE).
+Minecraft **1.21 → latest stable**, on **Paper, Spigot and Purpur**, Java 21.
+A CI step compiles the identical sources against the Spigot API to prove no
+Paper-only symbol is used, and every renamed symbol is resolved by name at
+runtime.
